@@ -440,6 +440,7 @@ ATTACHMENT_MIME_TYPES = [
     "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     "text/plain",
     "text/markdown",
+    "text/mdx",
     "application/rtf",
     "application/vnd.oasis.opendocument.spreadsheet",
     "application/vnd.oasis.opendocument.text",
@@ -507,8 +508,6 @@ ATTACHMENT_MIME_TYPES = [
     "application/x-sql",
     # Gzip
     "application/x-gzip",
-    # Markdown
-    "text/markdown",
 ]
 
 # Seed directory path
