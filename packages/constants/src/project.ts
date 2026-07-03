@@ -8,10 +8,10 @@
 import type { TProjectAppliedDisplayFilterKeys, TProjectOrderByOptions } from "@plane/types";
 // local imports
 
-export type TNetworkChoiceIconKey = "Lock" | "Globe2";
+export type TNetworkChoiceIconKey = "Lock" | "Users" | "Globe2";
 
 export type TNetworkChoice = {
-  key: 0 | 2;
+  key: 0 | 1 | 2;
   labelKey: string;
   i18n_label: string;
   description: string;
@@ -21,10 +21,17 @@ export type TNetworkChoice = {
 export const NETWORK_CHOICES: TNetworkChoice[] = [
   {
     key: 0,
+    labelKey: "Secret",
+    i18n_label: "workspace_projects.network.secret.title",
+    description: "workspace_projects.network.secret.description", //"Accessible only by invite",
+    iconKey: "Lock",
+  },
+  {
+    key: 1,
     labelKey: "Private",
     i18n_label: "workspace_projects.network.private.title",
-    description: "workspace_projects.network.private.description", //"Accessible only by invite",
-    iconKey: "Lock",
+    description: "workspace_projects.network.private.description", //"Visible to workspace members, but joining requires an invite",
+    iconKey: "Users",
   },
   {
     key: 2,

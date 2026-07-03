@@ -229,7 +229,7 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
                 <h3 className="truncate font-semibold text-on-color">{project.name}</h3>
                 <span className="flex items-center gap-1.5">
                   <p className="text-11 font-medium text-on-color">{project.identifier} </p>
-                  {project.network === 0 && <LockIcon className="h-2.5 w-2.5 text-on-color" />}
+                  {project.network !== 2 && <LockIcon className="h-2.5 w-2.5 text-on-color" />}
                 </span>
               </div>
             </div>

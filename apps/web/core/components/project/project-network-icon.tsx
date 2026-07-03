@@ -4,6 +4,7 @@
  * See the LICENSE file for details.
  */
 
+import { Users } from "lucide-react";
 import type { TNetworkChoiceIconKey } from "@plane/constants";
 // plane imports
 import { GlobeIcon, LockIcon } from "@plane/propel/icons";
@@ -21,6 +22,8 @@ export function ProjectNetworkIcon(props: Props) {
     switch (iconKey) {
       case "Lock":
         return LockIcon;
+      case "Users":
+        return Users;
       case "Globe2":
         return GlobeIcon;
       default:

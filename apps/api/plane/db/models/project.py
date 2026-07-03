@@ -29,11 +29,12 @@ class ROLE(Enum):
 
 class ProjectNetwork(Enum):
     SECRET = 0
+    PRIVATE = 1
     PUBLIC = 2
 
     @classmethod
     def choices(cls):
-        return [(0, "Secret"), (2, "Public")]
+        return [(0, "Secret"), (1, "Private"), (2, "Public")]
 
 
 def get_default_props():
@@ -66,7 +67,7 @@ def get_default_preferences():
 
 
 class Project(BaseModel):
-    NETWORK_CHOICES = ((0, "Secret"), (2, "Public"))
+    NETWORK_CHOICES = ((0, "Secret"), (1, "Private"), (2, "Public"))
     name = models.CharField(max_length=255, verbose_name="Project Name")
     description = models.TextField(verbose_name="Project Description", blank=True)
     description_text = models.JSONField(verbose_name="Project Description RT", blank=True, null=True)

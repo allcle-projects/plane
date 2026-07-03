@@ -40,6 +40,7 @@ from plane.db.models import (
     ProjectPage,
     WorkspaceMember,
 )
+from plane.db.models.project import ProjectNetwork
 
 
 class GlobalSearchEndpoint(BaseAPIView):
@@ -372,7 +373,8 @@ class SearchEndpoint(BaseAPIView):
                     projects = (
                         Project.objects.filter(
                             q,
-                            Q(project_projectmember__member=self.request.user) | Q(network=2),
+                            Q(project_projectmember__member=self.request.user)
+                            | Q(network__in=[ProjectNetwork.PRIVATE.value, ProjectNetwork.PUBLIC.value]),
                             workspace__slug=slug,
                         )
                         .order_by("-created_at")
@@ -577,7 +579,8 @@ class SearchEndpoint(BaseAPIView):
                     projects = (
                         Project.objects.filter(
                             q,
-                            Q(project_projectmember__member=self.request.user) | Q(network=2),
+                            Q(project_projectmember__member=self.request.user)
+                            | Q(network__in=[ProjectNetwork.PRIVATE.value, ProjectNetwork.PUBLIC.value]),
                             workspace__slug=slug,
                         )
                         .order_by("-created_at")

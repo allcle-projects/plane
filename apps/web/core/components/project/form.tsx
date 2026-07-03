@@ -238,7 +238,7 @@ export function ProjectDetailsForm(props: IProjectDetailsForm) {
               <span className="flex items-center gap-2 text-13">
                 <span>{watch("identifier")} .</span>
                 <span className="flex items-center gap-1.5">
-                  {project.network === 0 && <LockIcon className="h-2.5 w-2.5 text-on-color" />}
+                  {project.network !== 2 && <LockIcon className="h-2.5 w-2.5 text-on-color" />}
                   {currentNetwork && t(currentNetwork?.i18n_label)}
                 </span>
               </span>

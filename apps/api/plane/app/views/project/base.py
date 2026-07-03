@@ -123,7 +123,7 @@ class ProjectViewSet(BaseViewSet):
                     project_projectmember__member=self.request.user,
                     project_projectmember__is_active=True,
                 )
-                | Q(network=2)
+                | Q(network__in=[ProjectNetwork.PRIVATE.value, ProjectNetwork.PUBLIC.value])
             )
 
         if request.GET.get("per_page", False) and request.GET.get("cursor", False):
@@ -213,7 +213,7 @@ class ProjectViewSet(BaseViewSet):
                     project_projectmember__member=self.request.user,
                     project_projectmember__is_active=True,
                 )
-                | Q(network=2)
+                | Q(network__in=[ProjectNetwork.PRIVATE.value, ProjectNetwork.PUBLIC.value])
             )
         return Response(projects, status=status.HTTP_200_OK)
 

@@ -87,7 +87,7 @@ class ProjectListCreateAPIEndpoint(BaseAPIView):
                     project_projectmember__member=self.request.user,
                     project_projectmember__is_active=True,
                 )
-                | Q(network=2)
+                | Q(network__in=[1, 2])
             )
             .select_related("project_lead")
             .annotate(
@@ -302,7 +302,7 @@ class ProjectDetailAPIEndpoint(BaseAPIView):
                     project_projectmember__member=self.request.user,
                     project_projectmember__is_active=True,
                 )
-                | Q(network=2)
+                | Q(network__in=[1, 2])
             )
             .select_related("workspace", "workspace__owner", "default_assignee", "project_lead")
             .annotate(

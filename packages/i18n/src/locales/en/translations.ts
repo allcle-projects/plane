@@ -1254,9 +1254,13 @@ export default {
     },
     network: {
       label: "Network",
+      secret: {
+        title: "Secret",
+        description: "Accessible only by invite",
+      },
       private: {
         title: "Private",
-        description: "Accessible only by invite",
+        description: "Visible to workspace members, but joining requires an invite",
       },
       public: {
         title: "Public",
