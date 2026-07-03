@@ -26,9 +26,17 @@ from .issue import (
     IssueLinkCreateSerializer,
     IssueLinkUpdateSerializer,
     IssueRelationCreateSerializer,
+    IssueRelationRemoveSerializer,
     IssueRelationResponseSerializer,
     IssueRelationSerializer,
     RelatedIssueSerializer,
+    IssueReactionSerializer,
+    CommentReactionSerializer,
+    IssueSubscriberSerializer,
+)
+from .version import (
+    IssueDescriptionVersionSerializer,
+    IssueDescriptionVersionDetailSerializer,
 )
 from .state import StateLiteSerializer, StateSerializer
 from .cycle import (
@@ -47,6 +55,7 @@ from .module import (
     ModuleIssueRequestSerializer,
     ModuleCreateSerializer,
     ModuleUpdateSerializer,
+    ModuleLinkSerializer,
 )
 from .intake import (
     IntakeIssueSerializer,

@@ -10,6 +10,8 @@ from plane.api.views import (
     ModuleIssueListCreateAPIEndpoint,
     ModuleIssueDetailAPIEndpoint,
     ModuleArchiveUnarchiveAPIEndpoint,
+    ModuleLinkListCreateAPIEndpoint,
+    ModuleLinkDetailAPIEndpoint,
 )
 
 urlpatterns = [
@@ -47,5 +49,15 @@ urlpatterns = [
         "workspaces/<str:slug>/projects/<uuid:project_id>/archived-modules/<uuid:pk>/unarchive/",
         ModuleArchiveUnarchiveAPIEndpoint.as_view(http_method_names=["delete"]),
         name="module-unarchive",
+    ),
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/modules/<uuid:module_id>/module-links/",
+        ModuleLinkListCreateAPIEndpoint.as_view(http_method_names=["get", "post"]),
+        name="module-link-list",
+    ),
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/modules/<uuid:module_id>/module-links/<uuid:pk>/",
+        ModuleLinkDetailAPIEndpoint.as_view(http_method_names=["get", "patch", "delete"]),
+        name="module-link-detail",
     ),
 ]

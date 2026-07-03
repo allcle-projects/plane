@@ -4,6 +4,7 @@
 
 # Python imports
 import json
+import random
 import uuid
 import re
 
@@ -47,6 +48,7 @@ from plane.api.serializers import (
     IssueCommentSerializer,
     IssueLinkSerializer,
     IssueRelationCreateSerializer,
+    IssueRelationRemoveSerializer,
     IssueRelationResponseSerializer,
     IssueRelationSerializer,
     IssueSerializer,
@@ -1074,6 +1076,86 @@ class LabelDetailAPIEndpoint(LabelListCreateAPIEndpoint):
         label = self.get_queryset().get(pk=pk)
         label.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class BulkCreateIssueLabelsAPIEndpoint(BaseAPIView):
+    """Bulk Create Labels Endpoint"""
+
+    serializer_class = LabelSerializer
+    model = Label
+    permission_classes = [ProjectMemberPermission]
+
+    @label_docs(
+        operation_id="bulk_create_labels",
+        description="Create multiple labels at once in a project. Only project admins can perform this action.",
+        request=OpenApiRequest(
+            request={
+                "type": "object",
+                "properties": {
+                    "label_data": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string"},
+                                "description": {"type": "string"},
+                            },
+                        },
+                    }
+                },
+            },
+        ),
+        responses={
+            201: OpenApiResponse(
+                description="Labels created successfully",
+                response=LabelSerializer(many=True),
+            ),
+            403: ADMIN_ONLY_RESPONSE,
+        },
+    )
+    def post(self, request, slug, project_id):
+        """Bulk create labels
+
+        Create multiple labels at once in a project, generating a random
+        color for each. Only project admins can perform this action.
+        """
+        if not ProjectMember.objects.filter(
+            workspace__slug=slug,
+            member=request.user,
+            role=20,
+            project_id=project_id,
+            is_active=True,
+        ).exists():
+            return Response(
+                {"error": "Only admins can bulk create labels"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        label_data = request.data.get("label_data", [])
+
+        project = Project.objects.get(pk=project_id)
+
+        labels = Label.objects.bulk_create(
+            [
+                Label(
+                    name=label.get("name", "Migrated"),
+                    description=label.get("description", "Migrated Issue"),
+                    color=f"#{random.randint(0, 0xFFFFFF + 1):06X}",
+                    project_id=project_id,
+                    workspace_id=project.workspace_id,
+                    created_by=request.user,
+                    updated_by=request.user,
+                )
+                for label in label_data
+            ],
+            batch_size=50,
+            ignore_conflicts=True,
+        )
+
+        return Response(
+            {"labels": LabelSerializer(labels, many=True).data},
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class IssueLinkListCreateAPIEndpoint(BaseAPIView):
@@ -2540,3 +2622,75 @@ class IssueRelationListCreateAPIEndpoint(BaseAPIView):
             serializer_class(refetched_relations, many=True).data,
             status=status.HTTP_201_CREATED,
         )
+
+
+class IssueRelationRemoveAPIEndpoint(BaseAPIView):
+    """Work Item Relation Remove Endpoint"""
+
+    serializer_class = IssueRelationSerializer
+    model = IssueRelation
+    permission_classes = [ProjectEntityPermission]
+
+    @work_item_relation_docs(
+        operation_id="remove_work_item_relation",
+        summary="Remove work item relation",
+        description="Remove an existing relationship between two work items, regardless of relation direction.",
+        parameters=[
+            ISSUE_ID_PARAMETER,
+        ],
+        request=OpenApiRequest(
+            request=IssueRelationRemoveSerializer,
+            examples=[
+                OpenApiExample(
+                    name="Remove relation",
+                    value={"related_issue": "550e8400-e29b-41d4-a716-446655440000"},
+                )
+            ],
+        ),
+        responses={
+            204: DELETED_RESPONSE,
+            400: INVALID_REQUEST_RESPONSE,
+            404: ISSUE_NOT_FOUND_RESPONSE,
+        },
+    )
+    def post(self, request, slug, project_id, issue_id):
+        """Remove work item relation
+
+        Remove an existing relationship between two work items. The relation
+        is looked up in either direction (issue/related_issue) and deleted.
+        """
+        serializer = IssueRelationRemoveSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        related_issue = serializer.validated_data["related_issue"]
+
+        issue_relation = (
+            IssueRelation.objects.filter(
+                Q(issue_id=related_issue, related_issue_id=issue_id) | Q(issue_id=issue_id, related_issue_id=related_issue),
+                workspace__slug=slug,
+                project_id=project_id,
+            )
+            .first()
+        )
+
+        if issue_relation is None:
+            return Response(
+                {"error": "The requested resource does not exist."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        current_instance = json.dumps(IssueRelationSerializer(issue_relation).data, cls=DjangoJSONEncoder)
+        issue_relation.delete()
+        issue_activity.delay(
+            type="issue_relation.activity.deleted",
+            requested_data=json.dumps(request.data, cls=DjangoJSONEncoder),
+            actor_id=str(request.user.id),
+            issue_id=str(issue_id),
+            project_id=str(project_id),
+            current_instance=current_instance,
+            epoch=int(timezone.now().timestamp()),
+            notification=True,
+            origin=base_host(request=request, is_app=True),
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)

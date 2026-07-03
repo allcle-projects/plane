@@ -325,6 +325,96 @@ def estimate_point_docs(**kwargs):
     return extend_schema(**_merge_schema_options(defaults, kwargs))
 
 
+def reaction_docs(**kwargs):
+    """Decorator for work item reaction endpoints"""
+    defaults = {
+        "tags": ["Work Item Reactions"],
+        "parameters": [WORKSPACE_SLUG_PARAMETER, PROJECT_ID_PARAMETER],
+        "responses": {
+            401: UNAUTHORIZED_RESPONSE,
+            403: FORBIDDEN_RESPONSE,
+            404: NOT_FOUND_RESPONSE,
+        },
+    }
+
+    return extend_schema(**_merge_schema_options(defaults, kwargs))
+
+
+def comment_reaction_docs(**kwargs):
+    """Decorator for work item comment reaction endpoints"""
+    defaults = {
+        "tags": ["Work Item Comment Reactions"],
+        "parameters": [WORKSPACE_SLUG_PARAMETER, PROJECT_ID_PARAMETER],
+        "responses": {
+            401: UNAUTHORIZED_RESPONSE,
+            403: FORBIDDEN_RESPONSE,
+            404: NOT_FOUND_RESPONSE,
+        },
+    }
+
+    return extend_schema(**_merge_schema_options(defaults, kwargs))
+
+
+def subscriber_docs(**kwargs):
+    """Decorator for work item subscriber endpoints"""
+    defaults = {
+        "tags": ["Work Item Subscribers"],
+        "parameters": [WORKSPACE_SLUG_PARAMETER, PROJECT_ID_PARAMETER],
+        "responses": {
+            401: UNAUTHORIZED_RESPONSE,
+            403: FORBIDDEN_RESPONSE,
+            404: NOT_FOUND_RESPONSE,
+        },
+    }
+
+    return extend_schema(**_merge_schema_options(defaults, kwargs))
+
+
+def sub_issue_docs(**kwargs):
+    """Decorator for sub-issue (work item children) endpoints"""
+    defaults = {
+        "tags": ["Work Items"],
+        "parameters": [WORKSPACE_SLUG_PARAMETER, PROJECT_ID_PARAMETER],
+        "responses": {
+            401: UNAUTHORIZED_RESPONSE,
+            403: FORBIDDEN_RESPONSE,
+            404: NOT_FOUND_RESPONSE,
+        },
+    }
+
+    return extend_schema(**_merge_schema_options(defaults, kwargs))
+
+
+def archive_docs(**kwargs):
+    """Decorator for work item archive/unarchive/bulk endpoints"""
+    defaults = {
+        "tags": ["Work Item Archive"],
+        "parameters": [WORKSPACE_SLUG_PARAMETER, PROJECT_ID_PARAMETER],
+        "responses": {
+            401: UNAUTHORIZED_RESPONSE,
+            403: FORBIDDEN_RESPONSE,
+            404: NOT_FOUND_RESPONSE,
+        },
+    }
+
+    return extend_schema(**_merge_schema_options(defaults, kwargs))
+
+
+def version_docs(**kwargs):
+    """Decorator for work item description version endpoints"""
+    defaults = {
+        "tags": ["Work Item Description Versions"],
+        "parameters": [WORKSPACE_SLUG_PARAMETER, PROJECT_ID_PARAMETER],
+        "responses": {
+            401: UNAUTHORIZED_RESPONSE,
+            403: FORBIDDEN_RESPONSE,
+            404: NOT_FOUND_RESPONSE,
+        },
+    }
+
+    return extend_schema(**_merge_schema_options(defaults, kwargs))
+
+
 def page_docs(**kwargs):
     """Decorator for page-related endpoints"""
     defaults = {

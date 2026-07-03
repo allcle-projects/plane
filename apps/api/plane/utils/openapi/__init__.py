@@ -49,6 +49,11 @@ from .parameters import (
     FIELDS_PARAMETER,
     EXPAND_PARAMETER,
     ESTIMATE_ID_PARAMETER,
+    REACTION_CODE_PARAMETER,
+    COMMENT_ID_PATH_PARAMETER,
+    SUBSCRIBER_ID_PARAMETER,
+    WORK_ITEM_PK_PARAMETER,
+    VERSION_PK_PARAMETER,
 )
 
 # Responses
@@ -94,6 +99,11 @@ from .responses import (
     ASSET_UPDATED_RESPONSE,
     ASSET_DELETED_RESPONSE,
     ASSET_NOT_FOUND_RESPONSE,
+    REACTION_NOT_FOUND_RESPONSE,
+    SUBSCRIBER_NOT_FOUND_RESPONSE,
+    ALREADY_SUBSCRIBED_RESPONSE,
+    INVALID_ARCHIVE_STATE_RESPONSE,
+    REQUIRED_ISSUE_IDS_RESPONSE,
     create_paginated_response,
 )
 
@@ -182,6 +192,12 @@ from .decorators import (
     estimate_docs,
     estimate_point_docs,
     page_docs,
+    reaction_docs,
+    comment_reaction_docs,
+    subscriber_docs,
+    sub_issue_docs,
+    archive_docs,
+    version_docs,
 )
 
 # Schema processing hooks
@@ -225,6 +241,11 @@ __all__ = [
     "FIELDS_PARAMETER",
     "EXPAND_PARAMETER",
     "ESTIMATE_ID_PARAMETER",
+    "REACTION_CODE_PARAMETER",
+    "COMMENT_ID_PATH_PARAMETER",
+    "SUBSCRIBER_ID_PARAMETER",
+    "WORK_ITEM_PK_PARAMETER",
+    "VERSION_PK_PARAMETER",
     # Responses
     "UNAUTHORIZED_RESPONSE",
     "FORBIDDEN_RESPONSE",
@@ -268,6 +289,11 @@ __all__ = [
     "ASSET_UPDATED_RESPONSE",
     "ASSET_DELETED_RESPONSE",
     "ASSET_NOT_FOUND_RESPONSE",
+    "REACTION_NOT_FOUND_RESPONSE",
+    "SUBSCRIBER_NOT_FOUND_RESPONSE",
+    "ALREADY_SUBSCRIBED_RESPONSE",
+    "INVALID_ARCHIVE_STATE_RESPONSE",
+    "REQUIRED_ISSUE_IDS_RESPONSE",
     # Examples
     "FILE_UPLOAD_EXAMPLE",
     "WORKSPACE_EXAMPLE",
@@ -349,6 +375,12 @@ __all__ = [
     "estimate_docs",
     "estimate_point_docs",
     "page_docs",
+    "reaction_docs",
+    "comment_reaction_docs",
+    "subscriber_docs",
+    "sub_issue_docs",
+    "archive_docs",
+    "version_docs",
     # Hooks
     "preprocess_filter_api_v1_paths",
     "generate_operation_summary",

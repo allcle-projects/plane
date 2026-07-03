@@ -374,6 +374,58 @@ BAD_SEARCH_REQUEST_RESPONSE = OpenApiResponse(
     ],
 )
 
+# Reaction / Subscriber Responses
+REACTION_NOT_FOUND_RESPONSE = OpenApiResponse(
+    description="Reaction not found",
+    examples=[
+        OpenApiExample(
+            name="Reaction Not Found",
+            value={"error": "Reaction not found"},
+        )
+    ],
+)
+
+SUBSCRIBER_NOT_FOUND_RESPONSE = OpenApiResponse(
+    description="Subscriber not found",
+    examples=[
+        OpenApiExample(
+            name="Subscriber Not Found",
+            value={"error": "Subscriber not found"},
+        )
+    ],
+)
+
+ALREADY_SUBSCRIBED_RESPONSE = OpenApiResponse(
+    description="User already subscribed to the work item",
+    examples=[
+        OpenApiExample(
+            name="Already Subscribed",
+            value={"message": "User already subscribed to the issue."},
+        )
+    ],
+)
+
+# Archive-specific Responses
+INVALID_ARCHIVE_STATE_RESPONSE = OpenApiResponse(
+    description="Work item cannot be archived because its state is not completed or cancelled",
+    examples=[
+        OpenApiExample(
+            name="Invalid Archive State",
+            value={"error": "Can only archive completed or cancelled state group issue"},
+        )
+    ],
+)
+
+REQUIRED_ISSUE_IDS_RESPONSE = OpenApiResponse(
+    description="issue_ids is required",
+    examples=[
+        OpenApiExample(
+            name="Issue IDs Required",
+            value={"error": "Issue IDs are required"},
+        )
+    ],
+)
+
 
 # Pagination Response Templates
 def create_paginated_response(

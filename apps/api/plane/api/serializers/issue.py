@@ -21,6 +21,9 @@ from plane.db.models import (
     IssueLabel,
     IssueLink,
     IssueRelation,
+    IssueReaction,
+    CommentReaction,
+    IssueSubscriber,
     Label,
     ProjectMember,
     State,
@@ -887,3 +890,73 @@ class IssueSearchSerializer(serializers.Serializer):
     project__identifier = serializers.CharField(required=True, help_text="Project identifier")
     project_id = serializers.CharField(required=True, help_text="Project ID")
     workspace__slug = serializers.CharField(required=True, help_text="Workspace slug")
+
+
+class IssueReactionSerializer(BaseSerializer):
+    """
+    Serializer for work item (issue) emoji reactions.
+
+    Mirrors the internal IssueReactionSerializer: the reaction character/emoji
+    and the acting user are captured, everything else is read-only.
+    """
+
+    class Meta:
+        model = IssueReaction
+        fields = "__all__"
+        read_only_fields = [
+            "id",
+            "workspace",
+            "project",
+            "issue",
+            "actor",
+            "created_by",
+            "updated_by",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class CommentReactionSerializer(BaseSerializer):
+    """
+    Serializer for work item comment emoji reactions.
+
+    Mirrors the internal CommentReactionSerializer used for comment-level reactions.
+    """
+
+    class Meta:
+        model = CommentReaction
+        fields = "__all__"
+        read_only_fields = [
+            "id",
+            "workspace",
+            "project",
+            "comment",
+            "actor",
+            "created_by",
+            "updated_by",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class IssueSubscriberSerializer(BaseSerializer):
+    """
+    Serializer for work item subscribers.
+
+    Mirrors the internal IssueSubscriberSerializer used to track which users
+    are subscribed to notifications for a given work item.
+    """
+
+    class Meta:
+        model = IssueSubscriber
+        fields = "__all__"
+        read_only_fields = [
+            "id",
+            "workspace",
+            "project",
+            "issue",
+            "created_by",
+            "updated_by",
+            "created_at",
+            "updated_at",
+        ]

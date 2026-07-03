@@ -24,6 +24,7 @@ from plane.api.serializers import (
     ModuleIssueRequestSerializer,
     ModuleCreateSerializer,
     ModuleUpdateSerializer,
+    ModuleLinkSerializer,
 )
 from plane.app.permissions import ProjectEntityPermission
 from plane.bgtasks.issue_activities_task import issue_activity
@@ -70,6 +71,8 @@ from plane.utils.openapi import (
     REQUIRED_FIELDS_RESPONSE,
     MODULE_ISSUE_NOT_FOUND_RESPONSE,
     CANNOT_ARCHIVE_RESPONSE,
+    LINK_NOT_FOUND_RESPONSE,
+    LINK_ID_PARAMETER,
 )
 
 
@@ -1074,4 +1077,188 @@ class ModuleArchiveUnarchiveAPIEndpoint(BaseAPIView):
         module = Module.objects.get(pk=pk, project_id=project_id, workspace__slug=slug)
         module.archived_at = None
         module.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ModuleLinkListCreateAPIEndpoint(BaseAPIView):
+    """Module Link List and Create Endpoint"""
+
+    serializer_class = ModuleLinkSerializer
+    model = ModuleLink
+    permission_classes = [ProjectEntityPermission]
+    use_read_replica = True
+
+    def get_queryset(self):
+        return (
+            ModuleLink.objects.filter(workspace__slug=self.kwargs.get("slug"))
+            .filter(project_id=self.kwargs.get("project_id"))
+            .filter(module_id=self.kwargs.get("module_id"))
+            .filter(
+                project__project_projectmember__member=self.request.user,
+                project__project_projectmember__is_active=True,
+            )
+            .filter(project__archived_at__isnull=True)
+            .order_by(self.kwargs.get("order_by", "-created_at"))
+            .distinct()
+        )
+
+    @module_docs(
+        operation_id="list_module_links",
+        summary="List module links",
+        description="Retrieve all external links associated with a module.",
+        parameters=[
+            MODULE_ID_PARAMETER,
+            CURSOR_PARAMETER,
+            PER_PAGE_PARAMETER,
+            FIELDS_PARAMETER,
+            EXPAND_PARAMETER,
+        ],
+        responses={
+            200: create_paginated_response(
+                ModuleLinkSerializer,
+                "PaginatedModuleLinkResponse",
+                "Paginated list of module links",
+                "Paginated Module Links",
+            ),
+            404: MODULE_NOT_FOUND_RESPONSE,
+        },
+    )
+    def get(self, request, slug, project_id, module_id):
+        """List module links
+
+        Retrieve all external links associated with a module.
+        """
+        return self.paginate(
+            request=request,
+            queryset=(self.get_queryset()),
+            on_results=lambda links: (
+                ModuleLinkSerializer(links, many=True, fields=self.fields, expand=self.expand).data
+            ),
+        )
+
+    @module_docs(
+        operation_id="create_module_link",
+        summary="Create module link",
+        description="Add a new external link to a module.",
+        parameters=[
+            MODULE_ID_PARAMETER,
+        ],
+        request=OpenApiRequest(request=ModuleLinkSerializer),
+        responses={
+            201: OpenApiResponse(
+                description="Module link created successfully",
+                response=ModuleLinkSerializer,
+            ),
+            400: INVALID_REQUEST_RESPONSE,
+            404: MODULE_NOT_FOUND_RESPONSE,
+        },
+    )
+    def post(self, request, slug, project_id, module_id):
+        """Create module link
+
+        Add a new external link to a module.
+        """
+        serializer = ModuleLinkSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(project_id=project_id, module_id=module_id)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ModuleLinkDetailAPIEndpoint(BaseAPIView):
+    """Module Link Detail Endpoint"""
+
+    serializer_class = ModuleLinkSerializer
+    model = ModuleLink
+    permission_classes = [ProjectEntityPermission]
+    use_read_replica = True
+
+    def get_queryset(self):
+        return (
+            ModuleLink.objects.filter(workspace__slug=self.kwargs.get("slug"))
+            .filter(project_id=self.kwargs.get("project_id"))
+            .filter(module_id=self.kwargs.get("module_id"))
+            .filter(
+                project__project_projectmember__member=self.request.user,
+                project__project_projectmember__is_active=True,
+            )
+            .filter(project__archived_at__isnull=True)
+            .distinct()
+        )
+
+    @module_docs(
+        operation_id="retrieve_module_link",
+        summary="Retrieve module link",
+        description="Retrieve details of a specific module link.",
+        parameters=[
+            MODULE_ID_PARAMETER,
+            LINK_ID_PARAMETER,
+        ],
+        responses={
+            200: OpenApiResponse(
+                description="Module link details",
+                response=ModuleLinkSerializer,
+            ),
+            404: LINK_NOT_FOUND_RESPONSE,
+        },
+    )
+    def get(self, request, slug, project_id, module_id, pk):
+        """Retrieve module link
+
+        Retrieve details of a specific module link.
+        """
+        module_link = self.get_queryset().get(pk=pk)
+        serializer = ModuleLinkSerializer(module_link, fields=self.fields, expand=self.expand)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @module_docs(
+        operation_id="update_module_link",
+        summary="Update module link",
+        description="Modify the URL, title, or metadata of an existing module link.",
+        parameters=[
+            MODULE_ID_PARAMETER,
+            LINK_ID_PARAMETER,
+        ],
+        request=OpenApiRequest(request=ModuleLinkSerializer),
+        responses={
+            200: OpenApiResponse(
+                description="Module link updated successfully",
+                response=ModuleLinkSerializer,
+            ),
+            400: INVALID_REQUEST_RESPONSE,
+            404: LINK_NOT_FOUND_RESPONSE,
+        },
+    )
+    def patch(self, request, slug, project_id, module_id, pk):
+        """Update module link
+
+        Modify the URL, title, or metadata of an existing module link.
+        """
+        module_link = self.get_queryset().get(pk=pk)
+        serializer = ModuleLinkSerializer(module_link, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @module_docs(
+        operation_id="delete_module_link",
+        summary="Delete module link",
+        description="Permanently remove an external link from a module.",
+        parameters=[
+            MODULE_ID_PARAMETER,
+            LINK_ID_PARAMETER,
+        ],
+        responses={
+            204: DELETED_RESPONSE,
+            404: LINK_NOT_FOUND_RESPONSE,
+        },
+    )
+    def delete(self, request, slug, project_id, module_id, pk):
+        """Delete module link
+
+        Permanently remove an external link from a module.
+        """
+        module_link = self.get_queryset().get(pk=pk)
+        module_link.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

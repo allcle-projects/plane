@@ -518,3 +518,79 @@ ESTIMATE_ID_PARAMETER = OpenApiParameter(
     type=OpenApiTypes.UUID,
     location=OpenApiParameter.PATH,
 )
+
+# Reaction / Subscriber / Version Parameters
+REACTION_CODE_PARAMETER = OpenApiParameter(
+    name="reaction_code",
+    description="Reaction emoji/character code",
+    required=True,
+    type=OpenApiTypes.STR,
+    location=OpenApiParameter.PATH,
+    examples=[
+        OpenApiExample(
+            name="Example reaction",
+            value="\U0001F600",
+            description="A typical reaction emoji character",
+        )
+    ],
+)
+
+COMMENT_ID_PATH_PARAMETER = OpenApiParameter(
+    name="comment_id",
+    description="Comment ID",
+    required=True,
+    type=OpenApiTypes.UUID,
+    location=OpenApiParameter.PATH,
+    examples=[
+        OpenApiExample(
+            name="Example comment ID",
+            value="550e8400-e29b-41d4-a716-446655440000",
+            description="A typical comment UUID",
+        )
+    ],
+)
+
+SUBSCRIBER_ID_PARAMETER = OpenApiParameter(
+    name="subscriber_id",
+    description="Subscriber (user) ID",
+    required=True,
+    type=OpenApiTypes.UUID,
+    location=OpenApiParameter.PATH,
+    examples=[
+        OpenApiExample(
+            name="Example subscriber ID",
+            value="550e8400-e29b-41d4-a716-446655440000",
+            description="A typical user UUID",
+        )
+    ],
+)
+
+WORK_ITEM_PK_PARAMETER = OpenApiParameter(
+    name="pk",
+    description="Work item ID",
+    required=True,
+    type=OpenApiTypes.UUID,
+    location=OpenApiParameter.PATH,
+    examples=[
+        OpenApiExample(
+            name="Example work item ID",
+            value="550e8400-e29b-41d4-a716-446655440000",
+            description="A typical work item UUID",
+        )
+    ],
+)
+
+VERSION_PK_PARAMETER = OpenApiParameter(
+    name="pk",
+    description="Description version ID",
+    required=True,
+    type=OpenApiTypes.UUID,
+    location=OpenApiParameter.PATH,
+    examples=[
+        OpenApiExample(
+            name="Example version ID",
+            value="550e8400-e29b-41d4-a716-446655440000",
+            description="A typical description version UUID",
+        )
+    ],
+)

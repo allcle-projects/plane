@@ -15,6 +15,11 @@ from .user import urlpatterns as user_patterns
 from .work_item import urlpatterns as work_item_patterns
 from .invite import urlpatterns as invite_patterns
 from .sticky import urlpatterns as sticky_patterns
+from .reaction import urlpatterns as reaction_patterns
+from .subscriber import urlpatterns as subscriber_patterns
+from .archive import urlpatterns as archive_patterns
+from .version import urlpatterns as version_patterns
+from .workspace import urlpatterns as workspace_patterns
 
 urlpatterns = [
     *asset_patterns,
@@ -30,4 +35,9 @@ urlpatterns = [
     *work_item_patterns,
     *invite_patterns,
     *sticky_patterns,
+    *reaction_patterns,
+    *subscriber_patterns,
+    *archive_patterns,
+    *version_patterns,
+    *workspace_patterns,
 ]

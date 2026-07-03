@@ -3,7 +3,7 @@
 # See the LICENSE file for details.
 
 # Django imports
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 
 # Third party imports
 from rest_framework import status
@@ -298,3 +298,39 @@ class StateDetailAPIEndpoint(BaseAPIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class StateMarkDefaultAPIEndpoint(BaseAPIView):
+    """Mark State As Default Endpoint"""
+
+    serializer_class = StateSerializer
+    model = State
+    permission_classes = [ProjectEntityPermission]
+
+    @state_docs(
+        operation_id="mark_state_as_default",
+        summary="Mark state as default",
+        description="Mark a workflow state as the default state for new work items, unmarking any previous default.",  # noqa: E501
+        parameters=[
+            STATE_ID_PARAMETER,
+        ],
+        responses={
+            204: DELETED_RESPONSE,
+        },
+    )
+    def post(self, request, slug, project_id, state_id):
+        """Mark state as default
+
+        Mark a workflow state as the default state for new work items in the
+        project, automatically unmarking any previous default state.
+        """
+        # Validate the target state belongs to this project before touching the
+        # existing default — otherwise a bogus/cross-project state_id would clear
+        # the current default and set nothing, leaving the project with no
+        # default state and breaking work-item creation that assumes one exists.
+        if not State.objects.filter(workspace__slug=slug, project_id=project_id, pk=state_id).exists():
+            return Response({"error": "State not found"}, status=status.HTTP_404_NOT_FOUND)
+        with transaction.atomic():
+            State.objects.filter(workspace__slug=slug, project_id=project_id, default=True).update(default=False)
+            State.objects.filter(workspace__slug=slug, project_id=project_id, pk=state_id).update(default=True)
+        return Response(status=status.HTTP_204_NO_CONTENT)
