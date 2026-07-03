@@ -20,6 +20,11 @@ from .subscriber import urlpatterns as subscriber_patterns
 from .archive import urlpatterns as archive_patterns
 from .version import urlpatterns as version_patterns
 from .workspace import urlpatterns as workspace_patterns
+from .view import urlpatterns as view_patterns
+from .favorite import urlpatterns as favorite_patterns
+from .notification import urlpatterns as notification_patterns
+from .search import urlpatterns as search_patterns
+from .draft import urlpatterns as draft_patterns
 
 urlpatterns = [
     *asset_patterns,
@@ -40,4 +45,9 @@ urlpatterns = [
     *archive_patterns,
     *version_patterns,
     *workspace_patterns,
+    *view_patterns,
+    *favorite_patterns,
+    *notification_patterns,
+    *search_patterns,
+    *draft_patterns,
 ]

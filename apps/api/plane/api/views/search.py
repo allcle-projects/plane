@@ -1,0 +1,926 @@
+# Copyright (c) 2023-present Plane Software, Inc. and contributors
+# SPDX-License-Identifier: AGPL-3.0-only
+# See the LICENSE file for details.
+
+# Python imports
+import re
+
+# Django imports
+from django.db import models
+from django.db.models import (
+    Q,
+    OuterRef,
+    Subquery,
+    Value,
+    UUIDField,
+    CharField,
+    When,
+    Case,
+    QuerySet,
+)
+from django.contrib.postgres.aggregates import ArrayAgg
+from django.contrib.postgres.fields import ArrayField
+from django.db.models.functions import Coalesce, Concat
+from django.utils import timezone
+
+# Third party imports
+from rest_framework import status
+from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema, OpenApiResponse
+
+# Module imports
+from .base import BaseAPIView
+from plane.app.permissions import WorkspaceViewerPermission, ProjectLitePermission
+from plane.db.models import (
+    Workspace,
+    Project,
+    Issue,
+    Cycle,
+    Module,
+    Page,
+    IssueView,
+    ProjectMember,
+    ProjectPage,
+    WorkspaceMember,
+    IssueRelation,
+)
+from plane.db.models.project import ProjectNetwork
+from plane.utils.issue_search import search_issues
+from plane.utils.openapi import (
+    WORKSPACE_SLUG_PARAMETER,
+    PROJECT_ID_PARAMETER,
+    SEARCH_PARAMETER,
+    WORKSPACE_SEARCH_PARAMETER,
+    PROJECT_ID_QUERY_PARAMETER,
+    UNAUTHORIZED_RESPONSE,
+    FORBIDDEN_RESPONSE,
+    WORKSPACE_NOT_FOUND_RESPONSE,
+    PROJECT_NOT_FOUND_RESPONSE,
+)
+
+
+class GlobalSearchAPIEndpoint(BaseAPIView):
+    """Search across multiple entities (workspaces, projects, work items, cycles, modules, pages, views) in a workspace"""
+
+    permission_classes = [WorkspaceViewerPermission]
+    use_read_replica = True
+
+    def filter_workspaces(self, query, _slug, _project_id, _workspace_search):
+        fields = ["name"]
+        q = Q()
+        if query:
+            for field in fields:
+                q |= Q(**{f"{field}__icontains": query})
+        return (
+            Workspace.objects.filter(q, workspace_member__member=self.request.user)
+            .order_by("-created_at")
+            .distinct()
+            .values("name", "id", "slug")
+        )
+
+    def filter_projects(self, query, slug, _project_id, _workspace_search):
+        fields = ["name", "identifier"]
+        q = Q()
+        if query:
+            for field in fields:
+                q |= Q(**{f"{field}__icontains": query})
+        return (
+            Project.objects.filter(
+                q,
+                project_projectmember__member=self.request.user,
+                project_projectmember__is_active=True,
+                archived_at__isnull=True,
+                workspace__slug=slug,
+            )
+            .order_by("-created_at")
+            .distinct()
+            .values("name", "id", "identifier", "workspace__slug")
+        )
+
+    def filter_issues(self, query, slug, project_id, workspace_search):
+        fields = ["name", "sequence_id", "project__identifier"]
+        q = Q()
+        if query:
+            for field in fields:
+                if field == "sequence_id":
+                    sequences = re.findall(r"\b\d+\b", query)
+                    for sequence_id in sequences:
+                        q |= Q(**{"sequence_id": sequence_id})
+                else:
+                    q |= Q(**{f"{field}__icontains": query})
+
+        issues = Issue.issue_objects.filter(
+            q,
+            project__project_projectmember__member=self.request.user,
+            project__project_projectmember__is_active=True,
+            project__archived_at__isnull=True,
+            workspace__slug=slug,
+        )
+
+        if workspace_search == "false" and project_id:
+            issues = issues.filter(project_id=project_id)
+
+        return issues.distinct().values(
+            "name",
+            "id",
+            "sequence_id",
+            "project__identifier",
+            "project_id",
+            "workspace__slug",
+        )[:100]
+
+    def filter_cycles(self, query, slug, project_id, workspace_search):
+        fields = ["name"]
+        q = Q()
+        if query:
+            for field in fields:
+                q |= Q(**{f"{field}__icontains": query})
+
+        cycles = Cycle.objects.filter(
+            q,
+            project__project_projectmember__member=self.request.user,
+            project__project_projectmember__is_active=True,
+            project__archived_at__isnull=True,
+            workspace__slug=slug,
+        )
+
+        if workspace_search == "false" and project_id:
+            cycles = cycles.filter(project_id=project_id)
+
+        return (
+            cycles.order_by("-created_at")
+            .distinct()
+            .values("name", "id", "project_id", "project__identifier", "workspace__slug")
+        )
+
+    def filter_modules(self, query, slug, project_id, workspace_search):
+        fields = ["name"]
+        q = Q()
+        if query:
+            for field in fields:
+                q |= Q(**{f"{field}__icontains": query})
+
+        modules = Module.objects.filter(
+            q,
+            project__project_projectmember__member=self.request.user,
+            project__project_projectmember__is_active=True,
+            project__archived_at__isnull=True,
+            workspace__slug=slug,
+        )
+
+        if workspace_search == "false" and project_id:
+            modules = modules.filter(project_id=project_id)
+
+        return (
+            modules.order_by("-created_at")
+            .distinct()
+            .values("name", "id", "project_id", "project__identifier", "workspace__slug")
+        )
+
+    def filter_pages(self, query, slug, project_id, workspace_search):
+        fields = ["name"]
+        q = Q()
+        if query:
+            for field in fields:
+                q |= Q(**{f"{field}__icontains": query})
+
+        pages = (
+            Page.objects.filter(
+                q,
+                projects__project_projectmember__member=self.request.user,
+                projects__project_projectmember__is_active=True,
+                projects__archived_at__isnull=True,
+                workspace__slug=slug,
+            )
+            .annotate(
+                project_ids=Coalesce(
+                    ArrayAgg("projects__id", distinct=True, filter=~Q(projects__id=True)),
+                    Value([], output_field=ArrayField(UUIDField())),
+                )
+            )
+            .annotate(
+                project_identifiers=Coalesce(
+                    ArrayAgg(
+                        "projects__identifier",
+                        distinct=True,
+                        filter=~Q(projects__id=True),
+                    ),
+                    Value([], output_field=ArrayField(CharField())),
+                )
+            )
+        )
+
+        if workspace_search == "false" and project_id:
+            project_subquery = ProjectPage.objects.filter(page_id=OuterRef("id"), project_id=project_id).values_list(
+                "project_id", flat=True
+            )[:1]
+
+            pages = pages.annotate(project_id=Subquery(project_subquery)).filter(project_id=project_id)
+
+        return (
+            pages.order_by("-created_at")
+            .distinct()
+            .values("name", "id", "project_ids", "project_identifiers", "workspace__slug")
+        )
+
+    def filter_views(self, query, slug, project_id, workspace_search):
+        fields = ["name"]
+        q = Q()
+        if query:
+            for field in fields:
+                q |= Q(**{f"{field}__icontains": query})
+
+        issue_views = IssueView.objects.filter(
+            q,
+            project__project_projectmember__member=self.request.user,
+            project__project_projectmember__is_active=True,
+            project__archived_at__isnull=True,
+            workspace__slug=slug,
+        )
+
+        if workspace_search == "false" and project_id:
+            issue_views = issue_views.filter(project_id=project_id)
+
+        return (
+            issue_views.order_by("-created_at")
+            .distinct()
+            .values("name", "id", "project_id", "project__identifier", "workspace__slug")
+        )
+
+    def filter_intakes(self, query, slug, project_id, workspace_search):
+        fields = ["name", "sequence_id", "project__identifier"]
+        q = Q()
+        if query:
+            for field in fields:
+                if field == "sequence_id":
+                    sequences = re.findall(r"\b\d+\b", query)
+                    for sequence_id in sequences:
+                        q |= Q(**{"sequence_id": sequence_id})
+                else:
+                    q |= Q(**{f"{field}__icontains": query})
+
+        issues = Issue.objects.filter(
+            q,
+            project__project_projectmember__member=self.request.user,
+            project__project_projectmember__is_active=True,
+            project__archived_at__isnull=True,
+            workspace__slug=slug,
+        ).filter(models.Q(issue_intake__status=0) | models.Q(issue_intake__status=-2))
+
+        if workspace_search == "false" and project_id:
+            issues = issues.filter(project_id=project_id)
+
+        return (
+            issues.order_by("-created_at")
+            .distinct()
+            .values(
+                "name",
+                "id",
+                "sequence_id",
+                "project__identifier",
+                "project_id",
+                "workspace__slug",
+            )[:100]
+        )
+
+    @extend_schema(
+        operation_id="global_search",
+        summary="Global search",
+        description="Search across workspaces, projects, work items, cycles, modules, pages, views and intake in a workspace.",  # noqa: E501
+        tags=["Search"],
+        parameters=[
+            WORKSPACE_SLUG_PARAMETER,
+            SEARCH_PARAMETER,
+            WORKSPACE_SEARCH_PARAMETER,
+            PROJECT_ID_QUERY_PARAMETER,
+        ],
+        responses={
+            200: OpenApiResponse(description="Search results grouped by entity"),
+            401: UNAUTHORIZED_RESPONSE,
+            403: FORBIDDEN_RESPONSE,
+            404: WORKSPACE_NOT_FOUND_RESPONSE,
+        },
+    )
+    def get(self, request, slug):
+        """Global search"""
+        query = request.query_params.get("search", False)
+        entities_param = request.query_params.get("entities")
+        workspace_search = request.query_params.get("workspace_search", "false")
+        project_id = request.query_params.get("project_id", False)
+
+        MODELS_MAPPER = {
+            "workspace": self.filter_workspaces,
+            "project": self.filter_projects,
+            "issue": self.filter_issues,
+            "cycle": self.filter_cycles,
+            "module": self.filter_modules,
+            "issue_view": self.filter_views,
+            "page": self.filter_pages,
+            "intake": self.filter_intakes,
+        }
+
+        if entities_param:
+            requested_entities = [e.strip() for e in entities_param.split(",") if e.strip()]
+            requested_entities = [e for e in requested_entities if e in MODELS_MAPPER]
+        else:
+            requested_entities = list(MODELS_MAPPER.keys())
+
+        results = {}
+
+        for entity in requested_entities:
+            func = MODELS_MAPPER.get(entity)
+            if func:
+                results[entity] = func(query or None, slug, project_id, workspace_search)
+
+        return Response({"results": results}, status=status.HTTP_200_OK)
+
+
+class EntitySearchAPIEndpoint(BaseAPIView):
+    """Search entities for mentions and pickers (users, projects, work items, cycles, modules, pages)"""
+
+    permission_classes = [WorkspaceViewerPermission]
+    use_read_replica = True
+
+    @extend_schema(
+        operation_id="entity_search",
+        summary="Entity search",
+        description="Search entities (user mentions, projects, work items, cycles, modules, pages) scoped to a workspace or project.",  # noqa: E501
+        tags=["Search"],
+        parameters=[
+            WORKSPACE_SLUG_PARAMETER,
+            SEARCH_PARAMETER,
+            PROJECT_ID_QUERY_PARAMETER,
+        ],
+        responses={
+            200: OpenApiResponse(description="Search results grouped by query type"),
+            401: UNAUTHORIZED_RESPONSE,
+            403: FORBIDDEN_RESPONSE,
+            404: WORKSPACE_NOT_FOUND_RESPONSE,
+        },
+    )
+    def get(self, request, slug):
+        """Entity search"""
+        query = request.query_params.get("query", False)
+        query_types = request.query_params.get("query_type", "user_mention").split(",")
+        query_types = [qt.strip() for qt in query_types]
+        count = int(request.query_params.get("count", 5))
+        project_id = request.query_params.get("project_id", None)
+
+        response_data = {}
+
+        if project_id:
+            for query_type in query_types:
+                if query_type == "user_mention":
+                    fields = [
+                        "member__first_name",
+                        "member__last_name",
+                        "member__display_name",
+                    ]
+                    q = Q()
+
+                    if query:
+                        for field in fields:
+                            q |= Q(**{f"{field}__icontains": query})
+
+                    users = (
+                        ProjectMember.objects.filter(
+                            q,
+                            is_active=True,
+                            workspace__slug=slug,
+                            member__is_bot=False,
+                            project_id=project_id,
+                        )
+                        .annotate(
+                            member__avatar_url=Case(
+                                When(
+                                    member__avatar_asset__isnull=False,
+                                    then=Concat(
+                                        Value("/api/assets/v2/static/"),
+                                        "member__avatar_asset",
+                                        Value("/"),
+                                    ),
+                                ),
+                                When(
+                                    member__avatar_asset__isnull=True,
+                                    then="member__avatar",
+                                ),
+                                default=Value(None),
+                                output_field=CharField(),
+                            )
+                        )
+                        .order_by("-created_at")
+                    )
+
+                    users = users.distinct().values(
+                        "member__avatar_url",
+                        "member__display_name",
+                        "member__id",
+                    )
+
+                    response_data["user_mention"] = list(users[:count])
+
+                elif query_type == "project":
+                    fields = ["name", "identifier"]
+                    q = Q()
+
+                    if query:
+                        for field in fields:
+                            q |= Q(**{f"{field}__icontains": query})
+                    projects = (
+                        Project.objects.filter(
+                            q,
+                            Q(project_projectmember__member=self.request.user)
+                            | Q(network__in=[ProjectNetwork.PRIVATE.value, ProjectNetwork.PUBLIC.value]),
+                            workspace__slug=slug,
+                        )
+                        .order_by("-created_at")
+                        .distinct()
+                        .values("name", "id", "identifier", "logo_props", "workspace__slug")[:count]
+                    )
+                    response_data["project"] = list(projects)
+
+                elif query_type == "issue":
+                    fields = ["name", "sequence_id", "project__identifier"]
+                    q = Q()
+
+                    if query:
+                        for field in fields:
+                            if field == "sequence_id":
+                                sequences = re.findall(r"\b\d+\b", query)
+                                for sequence_id in sequences:
+                                    q |= Q(**{"sequence_id": sequence_id})
+                            else:
+                                q |= Q(**{f"{field}__icontains": query})
+
+                    issues = (
+                        Issue.issue_objects.filter(
+                            q,
+                            project__project_projectmember__member=self.request.user,
+                            project__project_projectmember__is_active=True,
+                            workspace__slug=slug,
+                            project_id=project_id,
+                        )
+                        .order_by("-created_at")
+                        .distinct()
+                        .values(
+                            "name",
+                            "id",
+                            "sequence_id",
+                            "project__identifier",
+                            "project_id",
+                            "priority",
+                            "state_id",
+                            "type_id",
+                        )[:count]
+                    )
+                    response_data["issue"] = list(issues)
+
+                elif query_type == "cycle":
+                    fields = ["name"]
+                    q = Q()
+
+                    if query:
+                        for field in fields:
+                            q |= Q(**{f"{field}__icontains": query})
+
+                    cycles = (
+                        Cycle.objects.filter(
+                            q,
+                            project__project_projectmember__member=self.request.user,
+                            project__project_projectmember__is_active=True,
+                            workspace__slug=slug,
+                            project_id=project_id,
+                        )
+                        .annotate(
+                            status=Case(
+                                When(
+                                    Q(start_date__lte=timezone.now()) & Q(end_date__gte=timezone.now()),
+                                    then=Value("CURRENT"),
+                                ),
+                                When(
+                                    start_date__gt=timezone.now(),
+                                    then=Value("UPCOMING"),
+                                ),
+                                When(end_date__lt=timezone.now(), then=Value("COMPLETED")),
+                                When(
+                                    Q(start_date__isnull=True) & Q(end_date__isnull=True),
+                                    then=Value("DRAFT"),
+                                ),
+                                default=Value("DRAFT"),
+                                output_field=CharField(),
+                            )
+                        )
+                        .order_by("-created_at")
+                        .distinct()
+                        .values(
+                            "name",
+                            "id",
+                            "project_id",
+                            "project__identifier",
+                            "status",
+                            "workspace__slug",
+                        )[:count]
+                    )
+                    response_data["cycle"] = list(cycles)
+
+                elif query_type == "module":
+                    fields = ["name"]
+                    q = Q()
+
+                    if query:
+                        for field in fields:
+                            q |= Q(**{f"{field}__icontains": query})
+
+                    modules = (
+                        Module.objects.filter(
+                            q,
+                            project__project_projectmember__member=self.request.user,
+                            project__project_projectmember__is_active=True,
+                            workspace__slug=slug,
+                            project_id=project_id,
+                        )
+                        .order_by("-created_at")
+                        .distinct()
+                        .values(
+                            "name",
+                            "id",
+                            "project_id",
+                            "project__identifier",
+                            "status",
+                            "workspace__slug",
+                        )[:count]
+                    )
+                    response_data["module"] = list(modules)
+
+                elif query_type == "page":
+                    fields = ["name"]
+                    q = Q()
+
+                    if query:
+                        for field in fields:
+                            q |= Q(**{f"{field}__icontains": query})
+
+                    pages = (
+                        Page.objects.filter(
+                            q,
+                            projects__project_projectmember__member=self.request.user,
+                            projects__project_projectmember__is_active=True,
+                            projects__id=project_id,
+                            workspace__slug=slug,
+                            access=0,
+                        )
+                        .order_by("-created_at")
+                        .distinct()
+                        .values(
+                            "name",
+                            "id",
+                            "logo_props",
+                            "projects__id",
+                            "workspace__slug",
+                        )[:count]
+                    )
+                    response_data["page"] = list(pages)
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        else:
+            for query_type in query_types:
+                if query_type == "user_mention":
+                    fields = [
+                        "member__first_name",
+                        "member__last_name",
+                        "member__display_name",
+                    ]
+                    q = Q()
+
+                    if query:
+                        for field in fields:
+                            q |= Q(**{f"{field}__icontains": query})
+                    users = (
+                        WorkspaceMember.objects.filter(
+                            q,
+                            is_active=True,
+                            workspace__slug=slug,
+                            member__is_bot=False,
+                        )
+                        .annotate(
+                            member__avatar_url=Case(
+                                When(
+                                    member__avatar_asset__isnull=False,
+                                    then=Concat(
+                                        Value("/api/assets/v2/static/"),
+                                        "member__avatar_asset",
+                                        Value("/"),
+                                    ),
+                                ),
+                                When(
+                                    member__avatar_asset__isnull=True,
+                                    then="member__avatar",
+                                ),
+                                default=Value(None),
+                                output_field=models.CharField(),
+                            )
+                        )
+                        .order_by("-created_at")
+                        .values("member__avatar_url", "member__display_name", "member__id")[:count]
+                    )
+                    response_data["user_mention"] = list(users)
+
+                elif query_type == "project":
+                    fields = ["name", "identifier"]
+                    q = Q()
+
+                    if query:
+                        for field in fields:
+                            q |= Q(**{f"{field}__icontains": query})
+                    projects = (
+                        Project.objects.filter(
+                            q,
+                            Q(project_projectmember__member=self.request.user)
+                            | Q(network__in=[ProjectNetwork.PRIVATE.value, ProjectNetwork.PUBLIC.value]),
+                            workspace__slug=slug,
+                        )
+                        .order_by("-created_at")
+                        .distinct()
+                        .values("name", "id", "identifier", "logo_props", "workspace__slug")[:count]
+                    )
+                    response_data["project"] = list(projects)
+
+                elif query_type == "issue":
+                    fields = ["name", "sequence_id", "project__identifier"]
+                    q = Q()
+
+                    if query:
+                        for field in fields:
+                            if field == "sequence_id":
+                                sequences = re.findall(r"\b\d+\b", query)
+                                for sequence_id in sequences:
+                                    q |= Q(**{"sequence_id": sequence_id})
+                            else:
+                                q |= Q(**{f"{field}__icontains": query})
+
+                    issues = (
+                        Issue.issue_objects.filter(
+                            q,
+                            project__project_projectmember__member=self.request.user,
+                            project__project_projectmember__is_active=True,
+                            workspace__slug=slug,
+                        )
+                        .order_by("-created_at")
+                        .distinct()
+                        .values(
+                            "name",
+                            "id",
+                            "sequence_id",
+                            "project__identifier",
+                            "project_id",
+                            "priority",
+                            "state_id",
+                            "type_id",
+                        )[:count]
+                    )
+                    response_data["issue"] = list(issues)
+
+                elif query_type == "cycle":
+                    fields = ["name"]
+                    q = Q()
+
+                    if query:
+                        for field in fields:
+                            q |= Q(**{f"{field}__icontains": query})
+
+                    cycles = (
+                        Cycle.objects.filter(
+                            q,
+                            project__project_projectmember__member=self.request.user,
+                            project__project_projectmember__is_active=True,
+                            workspace__slug=slug,
+                        )
+                        .annotate(
+                            status=Case(
+                                When(
+                                    Q(start_date__lte=timezone.now()) & Q(end_date__gte=timezone.now()),
+                                    then=Value("CURRENT"),
+                                ),
+                                When(
+                                    start_date__gt=timezone.now(),
+                                    then=Value("UPCOMING"),
+                                ),
+                                When(end_date__lt=timezone.now(), then=Value("COMPLETED")),
+                                When(
+                                    Q(start_date__isnull=True) & Q(end_date__isnull=True),
+                                    then=Value("DRAFT"),
+                                ),
+                                default=Value("DRAFT"),
+                                output_field=CharField(),
+                            )
+                        )
+                        .order_by("-created_at")
+                        .distinct()
+                        .values(
+                            "name",
+                            "id",
+                            "project_id",
+                            "project__identifier",
+                            "status",
+                            "workspace__slug",
+                        )[:count]
+                    )
+                    response_data["cycle"] = list(cycles)
+
+                elif query_type == "module":
+                    fields = ["name"]
+                    q = Q()
+
+                    if query:
+                        for field in fields:
+                            q |= Q(**{f"{field}__icontains": query})
+
+                    modules = (
+                        Module.objects.filter(
+                            q,
+                            project__project_projectmember__member=self.request.user,
+                            project__project_projectmember__is_active=True,
+                            workspace__slug=slug,
+                        )
+                        .order_by("-created_at")
+                        .distinct()
+                        .values(
+                            "name",
+                            "id",
+                            "project_id",
+                            "project__identifier",
+                            "status",
+                            "workspace__slug",
+                        )[:count]
+                    )
+                    response_data["module"] = list(modules)
+
+                elif query_type == "page":
+                    fields = ["name"]
+                    q = Q()
+
+                    if query:
+                        for field in fields:
+                            q |= Q(**{f"{field}__icontains": query})
+
+                    pages = (
+                        Page.objects.filter(
+                            q,
+                            projects__project_projectmember__member=self.request.user,
+                            projects__project_projectmember__is_active=True,
+                            workspace__slug=slug,
+                            access=0,
+                            is_global=True,
+                        )
+                        .order_by("-created_at")
+                        .distinct()
+                        .values(
+                            "name",
+                            "id",
+                            "logo_props",
+                            "projects__id",
+                            "workspace__slug",
+                        )[:count]
+                    )
+                    response_data["page"] = list(pages)
+            return Response(response_data, status=status.HTTP_200_OK)
+
+
+class IssueSearchAPIEndpoint(BaseAPIView):
+    """Search work items within a project with relation/cycle/module aware filters"""
+
+    permission_classes = [ProjectLitePermission]
+    use_read_replica = True
+
+    def filter_issues_by_project(self, project_id, issues: QuerySet) -> QuerySet:
+        issues = issues.filter(project_id=project_id)
+        return issues
+
+    def search_issues_by_query(self, query: str, issues: QuerySet) -> QuerySet:
+        issues = search_issues(query, issues)
+        return issues
+
+    def search_issues_and_excluding_parent(self, issues: QuerySet, issue_id: str) -> QuerySet:
+        issue = Issue.issue_objects.filter(pk=issue_id).first()
+        if issue:
+            issues = issues.filter(~Q(pk=issue_id), ~Q(pk=issue.parent_id), ~Q(parent_id=issue_id))
+        return issues
+
+    def filter_issues_excluding_related_issues(self, issue_id: str, issues: QuerySet) -> QuerySet:
+        issue = Issue.issue_objects.filter(pk=issue_id).first()
+        related_issue_ids = (
+            IssueRelation.objects.filter(Q(related_issue=issue) | Q(issue=issue))
+            .values_list("issue_id", "related_issue_id")
+            .distinct()
+        )
+
+        related_issue_ids = [item for sublist in related_issue_ids for item in sublist]
+        related_issue_ids.append(issue_id)
+
+        if issue:
+            issues = issues.exclude(pk__in=related_issue_ids)
+
+        return issues
+
+    def filter_root_issues_only(self, issue_id: str, issues: QuerySet) -> QuerySet:
+        issue = Issue.issue_objects.filter(pk=issue_id).first()
+        if issue:
+            issues = issues.filter(~Q(pk=issue_id), parent__isnull=True)
+        if issue.parent:
+            issues = issues.filter(~Q(pk=issue.parent_id))
+        return issues
+
+    def exclude_issues_in_cycles(self, issues: QuerySet) -> QuerySet:
+        issues = issues.exclude(Q(issue_cycle__isnull=False) & Q(issue_cycle__deleted_at__isnull=True))
+        return issues
+
+    def exclude_issues_in_module(self, issues: QuerySet, module: str) -> QuerySet:
+        issues = issues.exclude(Q(issue_module__module=module) & Q(issue_module__deleted_at__isnull=True))
+        return issues
+
+    def filter_issues_without_target_date(self, issues: QuerySet) -> QuerySet:
+        issues = issues.filter(target_date__isnull=True)
+        return issues
+
+    @extend_schema(
+        operation_id="search_project_work_items",
+        summary="Search project work items",
+        description="Search work items within a project with relation, cycle, module and target date aware filters.",
+        tags=["Search"],
+        parameters=[
+            WORKSPACE_SLUG_PARAMETER,
+            PROJECT_ID_PARAMETER,
+            SEARCH_PARAMETER,
+            WORKSPACE_SEARCH_PARAMETER,
+        ],
+        responses={
+            200: OpenApiResponse(description="Matching work items"),
+            401: UNAUTHORIZED_RESPONSE,
+            403: FORBIDDEN_RESPONSE,
+            404: PROJECT_NOT_FOUND_RESPONSE,
+        },
+    )
+    def get(self, request, slug, project_id):
+        """Search project work items"""
+        query = request.query_params.get("search", False)
+        workspace_search = request.query_params.get("workspace_search", "false")
+        parent = request.query_params.get("parent", "false")
+        issue_relation = request.query_params.get("issue_relation", "false")
+        cycle = request.query_params.get("cycle", "false")
+        module = request.query_params.get("module", False)
+        sub_issue = request.query_params.get("sub_issue", "false")
+        target_date = request.query_params.get("target_date", True)
+        issue_id = request.query_params.get("issue_id", False)
+
+        issues = Issue.issue_objects.filter(
+            workspace__slug=slug,
+            project__project_projectmember__member=self.request.user,
+            project__project_projectmember__is_active=True,
+            project__archived_at__isnull=True,
+        )
+
+        if workspace_search == "false":
+            issues = self.filter_issues_by_project(project_id, issues)
+
+        if query:
+            issues = self.search_issues_by_query(query, issues)
+
+        if parent == "true" and issue_id:
+            issues = self.search_issues_and_excluding_parent(issues, issue_id)
+
+        if issue_relation == "true" and issue_id:
+            issues = self.filter_issues_excluding_related_issues(issue_id, issues)
+
+        if sub_issue == "true" and issue_id:
+            issues = self.filter_root_issues_only(issue_id, issues)
+
+        if cycle == "true":
+            issues = self.exclude_issues_in_cycles(issues)
+
+        if module:
+            issues = self.exclude_issues_in_module(issues, module)
+
+        if target_date == "none":
+            issues = self.filter_issues_without_target_date(issues)
+
+        if ProjectMember.objects.filter(
+            project_id=project_id, member=self.request.user, is_active=True, role=5
+        ).exists():
+            issues = issues.filter(created_by=self.request.user)
+
+        return Response(
+            issues.values(
+                "name",
+                "id",
+                "start_date",
+                "sequence_id",
+                "project__name",
+                "project__identifier",
+                "project_id",
+                "workspace__slug",
+                "state__name",
+                "state__group",
+                "state__color",
+            )[:100],
+            status=status.HTTP_200_OK,
+        )

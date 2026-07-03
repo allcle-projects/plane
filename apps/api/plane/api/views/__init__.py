@@ -106,3 +106,38 @@ from .user import UserEndpoint
 from .invite import WorkspaceInvitationsViewset
 
 from .sticky import StickyViewSet
+
+from .view import (
+    WorkspaceViewAPIEndpoint,
+    WorkspaceViewDetailAPIEndpoint,
+    ProjectViewAPIEndpoint,
+    ProjectViewDetailAPIEndpoint,
+    ProjectViewFavoriteAPIEndpoint,
+)
+
+from .favorite import (
+    WorkspaceFavoriteAPIEndpoint,
+    WorkspaceFavoriteGroupAPIEndpoint,
+)
+
+from .notification import (
+    NotificationListAPIEndpoint,
+    NotificationDetailAPIEndpoint,
+    NotificationMarkReadAPIEndpoint,
+    NotificationArchiveAPIEndpoint,
+    UnreadNotificationAPIEndpoint,
+    MarkAllReadNotificationAPIEndpoint,
+    UserNotificationPreferenceAPIEndpoint,
+)
+
+from .search import (
+    GlobalSearchAPIEndpoint,
+    EntitySearchAPIEndpoint,
+    IssueSearchAPIEndpoint,
+)
+
+from .draft import (
+    WorkspaceDraftIssueAPIEndpoint,
+    WorkspaceDraftIssueDetailAPIEndpoint,
+    WorkspaceDraftToIssueAPIEndpoint,
+)
