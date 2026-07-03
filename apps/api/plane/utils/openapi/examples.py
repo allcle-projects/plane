@@ -307,6 +307,27 @@ MODULE_ISSUE_REQUEST_EXAMPLE = OpenApiExample(
     description="Example request for adding module issues",
 )
 
+# Page Examples
+PAGE_CREATE_EXAMPLE = OpenApiExample(
+    "PageCreateSerializer",
+    value={
+        "name": "New Page",
+        "description_html": "<p>New page description</p>",
+        "access": 0,
+    },
+    description="Example request for creating a page",
+)
+
+PAGE_UPDATE_EXAMPLE = OpenApiExample(
+    "PageUpdateSerializer",
+    value={
+        "name": "Updated Page",
+        "description_html": "<p>Updated page description</p>",
+        "access": 0,
+    },
+    description="Example request for updating a page",
+)
+
 # Project Examples
 PROJECT_CREATE_EXAMPLE = OpenApiExample(
     "ProjectCreateSerializer",
@@ -450,6 +471,23 @@ MODULE_EXAMPLE = OpenApiExample(
         "backlog_issues": 0,
         "created_at": "2024-01-01T10:30:00Z",
         "updated_at": "2024-01-10T15:45:00Z",
+    },
+)
+
+# Page Response Examples
+PAGE_EXAMPLE = OpenApiExample(
+    name="Page",
+    value={
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "name": "Product Requirements",
+        "description_html": "<p>Page description</p>",
+        "access": 0,
+        "archived_at": None,
+        "is_locked": False,
+        "owned_by": "550e8400-e29b-41d4-a716-446655440001",
+        "created_at": "2024-01-01T10:30:00Z",
+        "updated_at": "2024-01-10T15:45:00Z",
+        "project_ids": ["550e8400-e29b-41d4-a716-446655440002"],
     },
 )
 

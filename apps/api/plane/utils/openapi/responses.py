@@ -274,6 +274,27 @@ MODULE_ISSUE_NOT_FOUND_RESPONSE = OpenApiResponse(
     ],
 )
 
+# Page-specific Responses
+PAGE_NOT_FOUND_RESPONSE = OpenApiResponse(
+    description="Page not found",
+    examples=[
+        OpenApiExample(
+            name="Page Not Found",
+            value={"error": "Page not found"},
+        )
+    ],
+)
+
+PAGE_LOCKED_RESPONSE = OpenApiResponse(
+    description="Page is locked and cannot be edited",
+    examples=[
+        OpenApiExample(
+            name="Page Locked",
+            value={"error": "Page is locked"},
+        )
+    ],
+)
+
 # Cycle-specific Responses
 CYCLE_CANNOT_ARCHIVE_RESPONSE = OpenApiResponse(
     description="Cycle cannot be archived",

@@ -49,6 +49,12 @@ from .module import (
     ModuleArchiveUnarchiveAPIEndpoint,
 )
 
+from .page import (
+    PageListCreateAPIEndpoint,
+    PageDetailAPIEndpoint,
+    PageArchiveUnarchiveAPIEndpoint,
+)
+
 from .member import ProjectMemberListCreateAPIEndpoint, ProjectMemberDetailAPIEndpoint, WorkspaceMemberAPIEndpoint
 
 from .intake import (
