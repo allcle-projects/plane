@@ -47,8 +47,10 @@ class Command(BaseCommand):
             "IS_GITEA_ENABLED",
             "IS_OIDC_ENABLED",
         ]
-        if not InstanceConfiguration.objects.filter(key__in=keys).exists():
-            for key in keys:
+        existing_keys = set(InstanceConfiguration.objects.filter(key__in=keys).values_list("key", flat=True))
+        missing_keys = [key for key in keys if key not in existing_keys]
+        if missing_keys:
+            for key in missing_keys:
                 if key == "IS_GOOGLE_ENABLED":
                     GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET = get_configuration_value(
                         [
