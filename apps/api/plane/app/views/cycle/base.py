@@ -56,6 +56,8 @@ from plane.utils.analytics_plot import burndown_plot
 from plane.bgtasks.recent_visited_task import recent_visited_task
 from plane.utils.host import base_host
 from plane.utils.cycle_transfer_issues import transfer_cycle_issues
+from plane.utils.cycle_status import cycle_status_annotation
+from plane.utils.cycle_auto_schedule import auto_schedule_next_cycle
 from .. import BaseAPIView, BaseViewSet
 from plane.bgtasks.webhook_task import model_activity
 from plane.utils.timezone_converter import convert_to_utc, user_timezone_converter
@@ -149,22 +151,7 @@ class CycleViewSet(BaseViewSet):
                     ),
                 )
             )
-            .annotate(
-                status=Case(
-                    When(
-                        Q(start_date__lte=current_time_in_utc) & Q(end_date__gte=current_time_in_utc),
-                        then=Value("CURRENT"),
-                    ),
-                    When(start_date__gt=current_time_in_utc, then=Value("UPCOMING")),
-                    When(end_date__lt=current_time_in_utc, then=Value("COMPLETED")),
-                    When(
-                        Q(start_date__isnull=True) & Q(end_date__isnull=True),
-                        then=Value("DRAFT"),
-                    ),
-                    default=Value("DRAFT"),
-                    output_field=CharField(),
-                )
-            )
+            .annotate(status=cycle_status_annotation(current_time_in_utc))
             .annotate(
                 assignee_ids=Coalesce(
                     ArrayAgg(
@@ -226,11 +213,15 @@ class CycleViewSet(BaseViewSet):
                 "completed_issues",
                 "cancelled_issues",
                 "assignee_ids",
+                "state",
+                "auto_schedule",
+                "started_at",
+                "completed_at",
                 "status",
                 "version",
                 "created_by",
             )
-            datetime_fields = ["start_date", "end_date"]
+            datetime_fields = ["start_date", "end_date", "started_at", "completed_at"]
             data = user_timezone_converter(data, datetime_fields, project_timezone)
 
             if data:
@@ -263,7 +254,7 @@ class CycleViewSet(BaseViewSet):
             "version",
             "created_by",
         )
-        datetime_fields = ["start_date", "end_date"]
+        datetime_fields = ["start_date", "end_date", "started_at", "completed_at"]
         data = user_timezone_converter(data, datetime_fields, project_timezone)
         return Response(data, status=status.HTTP_200_OK)
 
@@ -301,6 +292,10 @@ class CycleViewSet(BaseViewSet):
                         "total_issues",
                         "completed_issues",
                         "assignee_ids",
+                        "state",
+                        "auto_schedule",
+                        "started_at",
+                        "completed_at",
                         "status",
                         "created_by",
                     )
@@ -311,7 +306,7 @@ class CycleViewSet(BaseViewSet):
                 project = Project.objects.get(id=self.kwargs.get("project_id"))
                 project_timezone = project.timezone
 
-                datetime_fields = ["start_date", "end_date"]
+                datetime_fields = ["start_date", "end_date", "started_at", "completed_at"]
                 cycle = user_timezone_converter(cycle, datetime_fields, project_timezone)
 
                 # Send the model activity
@@ -346,9 +341,12 @@ class CycleViewSet(BaseViewSet):
 
         request_data = request.data
 
-        if cycle.end_date is not None and cycle.end_date < timezone.now():
+        # State-first edit lock (mote): a cycle is locked once it is manually
+        # completed, not merely because its end_date has passed. This lets a
+        # manually-still-running (current) cycle past its end date stay editable.
+        if cycle.state == "completed":
             if "sort_order" in request_data:
-                # Can only change sort order for a completed cycle``
+                # Can only change sort order for a completed cycle
                 request_data = {"sort_order": request_data.get("sort_order", cycle.sort_order)}
             else:
                 return Response(
@@ -356,7 +354,7 @@ class CycleViewSet(BaseViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-        serializer = CycleWriteSerializer(cycle, data=request.data, partial=True, context={"project_id": project_id})
+        serializer = CycleWriteSerializer(cycle, data=request_data, partial=True, context={"project_id": project_id})
         if serializer.is_valid():
             serializer.save()
             cycle = queryset.values(
@@ -382,6 +380,10 @@ class CycleViewSet(BaseViewSet):
                 "total_issues",
                 "completed_issues",
                 "assignee_ids",
+                "state",
+                "auto_schedule",
+                "started_at",
+                "completed_at",
                 "status",
                 "created_by",
             ).first()
@@ -390,7 +392,7 @@ class CycleViewSet(BaseViewSet):
             project = Project.objects.get(id=self.kwargs.get("project_id"))
             project_timezone = project.timezone
 
-            datetime_fields = ["start_date", "end_date"]
+            datetime_fields = ["start_date", "end_date", "started_at", "completed_at"]
             cycle = user_timezone_converter(cycle, datetime_fields, project_timezone)
 
             # Send the model activity
@@ -449,6 +451,10 @@ class CycleViewSet(BaseViewSet):
                 "total_issues",
                 "completed_issues",
                 "assignee_ids",
+                "state",
+                "auto_schedule",
+                "started_at",
+                "completed_at",
                 "status",
                 "created_by",
             )
@@ -462,7 +468,7 @@ class CycleViewSet(BaseViewSet):
         # Fetch the project timezone
         project = Project.objects.get(id=self.kwargs.get("project_id"))
         project_timezone = project.timezone
-        datetime_fields = ["start_date", "end_date"]
+        datetime_fields = ["start_date", "end_date", "started_at", "completed_at"]
         data = user_timezone_converter(data, datetime_fields, project_timezone)
 
         recent_visited_task.delay(
@@ -515,6 +521,142 @@ class CycleViewSet(BaseViewSet):
             entity_name="cycle",
         ).delete(soft=False)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def _cycle_detail_response(self, slug, project_id, cycle_id):
+        """Serialize a single cycle with the same shape the list/create paths use."""
+        data = (
+            self.get_queryset()
+            .filter(pk=cycle_id)
+            .values(
+                # necessary fields
+                "id",
+                "workspace_id",
+                "project_id",
+                # model fields
+                "name",
+                "description",
+                "start_date",
+                "end_date",
+                "owned_by_id",
+                "view_props",
+                "sort_order",
+                "external_source",
+                "external_id",
+                "progress_snapshot",
+                "logo_props",
+                "version",
+                # meta fields
+                "is_favorite",
+                "total_issues",
+                "completed_issues",
+                "assignee_ids",
+                "state",
+                "auto_schedule",
+                "started_at",
+                "completed_at",
+                "status",
+                "created_by",
+            )
+            .first()
+        )
+        project = Project.objects.get(id=project_id)
+        datetime_fields = ["start_date", "end_date", "started_at", "completed_at"]
+        return user_timezone_converter(data, datetime_fields, project.timezone)
+
+    @allow_permission([ROLE.ADMIN, ROLE.MEMBER])
+    def start(self, request, slug, project_id, cycle_id):
+        cycle = self.get_queryset().filter(pk=cycle_id).first()
+        if cycle is None:
+            return Response({"error": "Cycle not found"}, status=status.HTTP_404_NOT_FOUND)
+        if cycle.archived_at:
+            return Response(
+                {"error": "Archived cycle cannot be started"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if cycle.state not in ["draft", "upcoming"]:
+            return Response(
+                {"error": "Only draft or upcoming cycles can be started"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        force = request.data.get("force", False)
+        if (
+            not force
+            and Cycle.objects.filter(
+                workspace__slug=slug,
+                project_id=project_id,
+                state="current",
+                archived_at__isnull=True,
+            )
+            .exclude(pk=cycle_id)
+            .exists()
+        ):
+            return Response(
+                {"error": "Another cycle is already current in this project"},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        cycle.state = "current"
+        cycle.started_at = timezone.now()
+        cycle.save(update_fields=["state", "started_at"])
+
+        model_activity.delay(
+            model_name="cycle",
+            model_id=str(cycle.id),
+            requested_data={"state": "current"},
+            current_instance=None,
+            actor_id=request.user.id,
+            slug=slug,
+            origin=base_host(request=request, is_app=True),
+        )
+
+        return Response(
+            self._cycle_detail_response(slug, project_id, cycle_id),
+            status=status.HTTP_200_OK,
+        )
+
+    @allow_permission([ROLE.ADMIN, ROLE.MEMBER])
+    def complete(self, request, slug, project_id, cycle_id):
+        cycle = self.get_queryset().filter(pk=cycle_id).first()
+        if cycle is None:
+            return Response({"error": "Cycle not found"}, status=status.HTTP_404_NOT_FOUND)
+        if cycle.archived_at:
+            return Response(
+                {"error": "Archived cycle cannot be completed"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if cycle.state != "current":
+            return Response(
+                {"error": "Only a current cycle can be completed"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        cycle.state = "completed"
+        cycle.completed_at = timezone.now()
+        cycle.save(update_fields=["state", "completed_at"])
+
+        model_activity.delay(
+            model_name="cycle",
+            model_id=str(cycle.id),
+            requested_data={"state": "completed"},
+            current_instance=None,
+            actor_id=request.user.id,
+            slug=slug,
+            origin=base_host(request=request, is_app=True),
+        )
+
+        # Auto-schedule the next queued cycle if enabled.
+        auto_schedule_next_cycle(
+            completed_cycle=cycle,
+            actor_id=request.user.id,
+            slug=slug,
+            request=request,
+        )
+
+        return Response(
+            self._cycle_detail_response(slug, project_id, cycle_id),
+            status=status.HTTP_200_OK,
+        )
 
 
 class CycleDateCheckEndpoint(BaseAPIView):

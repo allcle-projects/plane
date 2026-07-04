@@ -46,6 +46,7 @@ from plane.db.models import (
 )
 from plane.db.models.project import ProjectNetwork
 from plane.utils.issue_search import search_issues, ranked_search
+from plane.utils.cycle_status import cycle_status_annotation
 from plane.utils.openapi import (
     WORKSPACE_SLUG_PARAMETER,
     PROJECT_ID_PARAMETER,
@@ -478,25 +479,7 @@ class EntitySearchAPIEndpoint(BaseAPIView):
                             workspace__slug=slug,
                             project_id=project_id,
                         )
-                        .annotate(
-                            status=Case(
-                                When(
-                                    Q(start_date__lte=timezone.now()) & Q(end_date__gte=timezone.now()),
-                                    then=Value("CURRENT"),
-                                ),
-                                When(
-                                    start_date__gt=timezone.now(),
-                                    then=Value("UPCOMING"),
-                                ),
-                                When(end_date__lt=timezone.now(), then=Value("COMPLETED")),
-                                When(
-                                    Q(start_date__isnull=True) & Q(end_date__isnull=True),
-                                    then=Value("DRAFT"),
-                                ),
-                                default=Value("DRAFT"),
-                                output_field=CharField(),
-                            )
-                        )
+                        .annotate(status=cycle_status_annotation(timezone.now()))
                         .order_by("-created_at")
                         .distinct()
                         .values(
@@ -682,25 +665,7 @@ class EntitySearchAPIEndpoint(BaseAPIView):
                             project__project_projectmember__is_active=True,
                             workspace__slug=slug,
                         )
-                        .annotate(
-                            status=Case(
-                                When(
-                                    Q(start_date__lte=timezone.now()) & Q(end_date__gte=timezone.now()),
-                                    then=Value("CURRENT"),
-                                ),
-                                When(
-                                    start_date__gt=timezone.now(),
-                                    then=Value("UPCOMING"),
-                                ),
-                                When(end_date__lt=timezone.now(), then=Value("COMPLETED")),
-                                When(
-                                    Q(start_date__isnull=True) & Q(end_date__isnull=True),
-                                    then=Value("DRAFT"),
-                                ),
-                                default=Value("DRAFT"),
-                                output_field=CharField(),
-                            )
-                        )
+                        .annotate(status=cycle_status_annotation(timezone.now()))
                         .order_by("-created_at")
                         .distinct()
                         .values(

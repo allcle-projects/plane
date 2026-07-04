@@ -11,6 +11,8 @@ from plane.api.views.cycle import (
     CycleIssueDetailAPIEndpoint,
     TransferCycleIssueAPIEndpoint,
     CycleArchiveUnarchiveAPIEndpoint,
+    CycleStartAPIEndpoint,
+    CycleCompleteAPIEndpoint,
 )
 
 urlpatterns = [
@@ -38,6 +40,16 @@ urlpatterns = [
         "workspaces/<str:slug>/projects/<uuid:project_id>/cycles/<uuid:cycle_id>/transfer-issues/",
         TransferCycleIssueAPIEndpoint.as_view(http_method_names=["post"]),
         name="transfer-issues",
+    ),
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/cycles/<uuid:cycle_id>/start/",
+        CycleStartAPIEndpoint.as_view(http_method_names=["post"]),
+        name="cycle-start",
+    ),
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/cycles/<uuid:cycle_id>/complete/",
+        CycleCompleteAPIEndpoint.as_view(http_method_names=["post"]),
+        name="cycle-complete",
     ),
     path(
         "workspaces/<str:slug>/projects/<uuid:project_id>/cycles/<uuid:cycle_id>/archive/",

@@ -74,6 +74,8 @@ from .cycle import (
     CycleIssueDetailAPIEndpoint,
     TransferCycleIssueAPIEndpoint,
     CycleArchiveUnarchiveAPIEndpoint,
+    CycleStartAPIEndpoint,
+    CycleCompleteAPIEndpoint,
 )
 
 from .module import (

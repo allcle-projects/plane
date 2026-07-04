@@ -7,8 +7,6 @@ from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models import (
-    Case,
-    CharField,
     Count,
     Exists,
     F,
@@ -18,7 +16,6 @@ from django.db.models import (
     Q,
     UUIDField,
     Value,
-    When,
     Subquery,
     Sum,
     FloatField,
@@ -32,6 +29,7 @@ from rest_framework.response import Response
 from plane.app.permissions import allow_permission, ROLE
 from plane.db.models import Cycle, UserFavorite, Issue, Label, User, Project
 from plane.utils.analytics_plot import burndown_plot
+from plane.utils.cycle_status import cycle_status_annotation
 
 # Module imports
 from .. import BaseAPIView
@@ -205,22 +203,7 @@ class CycleArchiveUnarchiveEndpoint(BaseAPIView):
                     ),
                 )
             )
-            .annotate(
-                status=Case(
-                    When(
-                        Q(start_date__lte=timezone.now()) & Q(end_date__gte=timezone.now()),
-                        then=Value("CURRENT"),
-                    ),
-                    When(start_date__gt=timezone.now(), then=Value("UPCOMING")),
-                    When(end_date__lt=timezone.now(), then=Value("COMPLETED")),
-                    When(
-                        Q(start_date__isnull=True) & Q(end_date__isnull=True),
-                        then=Value("DRAFT"),
-                    ),
-                    default=Value("DRAFT"),
-                    output_field=CharField(),
-                )
-            )
+            .annotate(status=cycle_status_annotation(timezone.now()))
             .annotate(
                 assignee_ids=Coalesce(
                     ArrayAgg(

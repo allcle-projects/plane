@@ -40,7 +40,17 @@ class CycleWriteSerializer(BaseSerializer):
     class Meta:
         model = Cycle
         fields = "__all__"
-        read_only_fields = ["workspace", "project", "owned_by", "archived_at"]
+        # `state`, `started_at`, `completed_at` are driven by the start/complete
+        # endpoints, not arbitrary PATCH. `auto_schedule` stays writable here.
+        read_only_fields = [
+            "workspace",
+            "project",
+            "owned_by",
+            "archived_at",
+            "state",
+            "started_at",
+            "completed_at",
+        ]
 
 
 class CycleSerializer(BaseSerializer):
@@ -76,6 +86,11 @@ class CycleSerializer(BaseSerializer):
             "external_id",
             "progress_snapshot",
             "logo_props",
+            # manual lifecycle fields
+            "state",
+            "auto_schedule",
+            "started_at",
+            "completed_at",
             # meta fields
             "is_favorite",
             "total_issues",

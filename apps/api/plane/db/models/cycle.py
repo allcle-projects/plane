@@ -58,6 +58,13 @@ def get_default_display_properties():
     }
 
 
+class CycleState(models.TextChoices):
+    DRAFT = "draft", "Draft"
+    UPCOMING = "upcoming", "Upcoming"
+    CURRENT = "current", "Current"
+    COMPLETED = "completed", "Completed"
+
+
 class Cycle(ProjectBaseModel):
     name = models.CharField(max_length=255, verbose_name="Cycle Name")
     description = models.TextField(verbose_name="Cycle Description", blank=True)
@@ -79,6 +86,15 @@ class Cycle(ProjectBaseModel):
     TIMEZONE_CHOICES = tuple(zip(pytz.common_timezones, pytz.common_timezones))
     timezone = models.CharField(max_length=255, default="UTC", choices=TIMEZONE_CHOICES)
     version = models.IntegerField(default=1)
+    # Manual lifecycle state machine (mote): governs status independently of pure date math.
+    state = models.CharField(
+        max_length=20,
+        choices=CycleState.choices,
+        default=CycleState.DRAFT,
+    )
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    auto_schedule = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = "Cycle"

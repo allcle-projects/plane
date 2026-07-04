@@ -46,6 +46,7 @@ from plane.db.models import (
     UserFavorite,
 )
 from plane.utils.cycle_transfer_issues import transfer_cycle_issues
+from plane.utils.cycle_auto_schedule import auto_schedule_next_cycle
 from plane.utils.host import base_host
 from .base import BaseAPIView
 from plane.bgtasks.webhook_task import model_activity
@@ -1204,3 +1205,106 @@ class TransferCycleIssueAPIEndpoint(BaseAPIView):
                 {"error": result.get("error")},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+
+class CycleStartAPIEndpoint(BaseAPIView):
+    """Public endpoint to manually start a cycle (mote)."""
+
+    model = Cycle
+    webhook_event = "cycle"
+    permission_classes = [ProjectEntityPermission]
+
+    def post(self, request, slug, project_id, cycle_id):
+        cycle = Cycle.objects.filter(workspace__slug=slug, project_id=project_id, pk=cycle_id).first()
+        if cycle is None:
+            return Response({"error": "Cycle not found"}, status=status.HTTP_404_NOT_FOUND)
+        if cycle.archived_at:
+            return Response(
+                {"error": "Archived cycle cannot be started"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if cycle.state not in ["draft", "upcoming"]:
+            return Response(
+                {"error": "Only draft or upcoming cycles can be started"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        force = request.data.get("force", False)
+        if (
+            not force
+            and Cycle.objects.filter(
+                workspace__slug=slug,
+                project_id=project_id,
+                state="current",
+                archived_at__isnull=True,
+            )
+            .exclude(pk=cycle_id)
+            .exists()
+        ):
+            return Response(
+                {"error": "Another cycle is already current in this project"},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        cycle.state = "current"
+        cycle.started_at = timezone.now()
+        cycle.save(update_fields=["state", "started_at"])
+
+        model_activity.delay(
+            model_name="cycle",
+            model_id=str(cycle.id),
+            requested_data={"state": "current"},
+            current_instance=None,
+            actor_id=request.user.id,
+            slug=slug,
+            origin=base_host(request=request, is_app=True),
+        )
+
+        return Response(CycleSerializer(cycle).data, status=status.HTTP_200_OK)
+
+
+class CycleCompleteAPIEndpoint(BaseAPIView):
+    """Public endpoint to manually complete a cycle and auto-schedule the next (mote)."""
+
+    model = Cycle
+    webhook_event = "cycle"
+    permission_classes = [ProjectEntityPermission]
+
+    def post(self, request, slug, project_id, cycle_id):
+        cycle = Cycle.objects.filter(workspace__slug=slug, project_id=project_id, pk=cycle_id).first()
+        if cycle is None:
+            return Response({"error": "Cycle not found"}, status=status.HTTP_404_NOT_FOUND)
+        if cycle.archived_at:
+            return Response(
+                {"error": "Archived cycle cannot be completed"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if cycle.state != "current":
+            return Response(
+                {"error": "Only a current cycle can be completed"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        cycle.state = "completed"
+        cycle.completed_at = timezone.now()
+        cycle.save(update_fields=["state", "completed_at"])
+
+        model_activity.delay(
+            model_name="cycle",
+            model_id=str(cycle.id),
+            requested_data={"state": "completed"},
+            current_instance=None,
+            actor_id=request.user.id,
+            slug=slug,
+            origin=base_host(request=request, is_app=True),
+        )
+
+        # Auto-schedule the next queued cycle if enabled.
+        auto_schedule_next_cycle(
+            completed_cycle=cycle,
+            actor_id=request.user.id,
+            slug=slug,
+            request=request,
+        )
+
+        return Response(CycleSerializer(cycle).data, status=status.HTTP_200_OK)

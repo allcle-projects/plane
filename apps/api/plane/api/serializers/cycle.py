@@ -143,6 +143,11 @@ class CycleSerializer(BaseSerializer):
             "project",
             "owned_by",
             "deleted_at",
+            # manual lifecycle fields are driven by start/complete endpoints
+            "state",
+            "auto_schedule",
+            "started_at",
+            "completed_at",
         ]
 
 

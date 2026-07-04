@@ -3,7 +3,7 @@
 # See the LICENSE file for details.
 
 # Django imports
-from django.db.models import Q, Count, Case, When, Value, CharField, Exists, OuterRef
+from django.db.models import Q, Count, Exists, OuterRef
 from django.utils import timezone
 
 # Third party modules
@@ -15,6 +15,7 @@ from plane.app.views.base import BaseAPIView
 from plane.db.models import Cycle, UserFavorite
 from plane.app.permissions import WorkspaceViewerPermission
 from plane.app.serializers.cycle import CycleSerializer
+from plane.utils.cycle_status import cycle_status_annotation
 
 
 class WorkspaceCyclesEndpoint(BaseAPIView):
@@ -39,22 +40,7 @@ class WorkspaceCyclesEndpoint(BaseAPIView):
             .select_related("owned_by")
             .filter(archived_at__isnull=True)
             .annotate(is_favorite=Exists(favorite_subquery))
-            .annotate(
-                status=Case(
-                    When(
-                        Q(start_date__lte=timezone.now()) & Q(end_date__gte=timezone.now()),
-                        then=Value("CURRENT"),
-                    ),
-                    When(start_date__gt=timezone.now(), then=Value("UPCOMING")),
-                    When(end_date__lt=timezone.now(), then=Value("COMPLETED")),
-                    When(
-                        Q(start_date__isnull=True) & Q(end_date__isnull=True),
-                        then=Value("DRAFT"),
-                    ),
-                    default=Value("DRAFT"),
-                    output_field=CharField(),
-                )
-            )
+            .annotate(status=cycle_status_annotation(timezone.now()))
             .annotate(
                 total_issues=Count(
                     "issue_cycle",

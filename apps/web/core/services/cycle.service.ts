@@ -142,6 +142,27 @@ export class CycleService extends APIService {
       });
   }
 
+  async startCycle(
+    workspaceSlug: string,
+    projectId: string,
+    cycleId: string,
+    data: { force?: boolean } = {}
+  ): Promise<ICycle> {
+    return this.post(`/api/workspaces/${workspaceSlug}/projects/${projectId}/cycles/${cycleId}/start/`, data)
+      .then((response) => response?.data)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
+  async completeCycle(workspaceSlug: string, projectId: string, cycleId: string): Promise<ICycle> {
+    return this.post(`/api/workspaces/${workspaceSlug}/projects/${projectId}/cycles/${cycleId}/complete/`, {})
+      .then((response) => response?.data)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
   async deleteCycle(workspaceSlug: string, projectId: string, cycleId: string): Promise<any> {
     return this.delete(`/api/workspaces/${workspaceSlug}/projects/${projectId}/cycles/${cycleId}/`)
       .then((response) => response?.data)

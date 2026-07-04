@@ -87,6 +87,15 @@ export interface ICycleStore {
     data: Partial<ICycle>
   ) => Promise<ICycle>;
   deleteCycle: (workspaceSlug: string, projectId: string, cycleId: string) => Promise<void>;
+  // manual lifecycle (mote)
+  startCycle: (workspaceSlug: string, projectId: string, cycleId: string, force?: boolean) => Promise<ICycle>;
+  completeCycle: (workspaceSlug: string, projectId: string, cycleId: string) => Promise<ICycle>;
+  toggleAutoSchedule: (
+    workspaceSlug: string,
+    projectId: string,
+    cycleId: string,
+    autoSchedule: boolean
+  ) => Promise<ICycle>;
   // favorites
   addCycleToFavorites: (workspaceSlug: string, projectId: string, cycleId: string) => Promise<any>;
   removeCycleFromFavorites: (workspaceSlug: string, projectId: string, cycleId: string) => Promise<void>;
@@ -142,6 +151,9 @@ export class CycleStore implements ICycleStore {
       fetchActiveCycleAnalytics: action,
       fetchCycleDetails: action,
       updateCycleDetails: action,
+      startCycle: action,
+      completeCycle: action,
+      toggleAutoSchedule: action,
       deleteCycle: action,
       addCycleToFavorites: action,
       removeCycleFromFavorites: action,
@@ -609,6 +621,60 @@ export class CycleStore implements ICycleStore {
       this.fetchActiveCycle(workspaceSlug, projectId);
       throw error;
     }
+  };
+
+  /**
+   * @description manually starts a cycle (mote)
+   * @param workspaceSlug
+   * @param projectId
+   * @param cycleId
+   * @param force skip the "another cycle is already current" guard
+   */
+  startCycle = async (workspaceSlug: string, projectId: string, cycleId: string, force = false) => {
+    const response = await this.cycleService.startCycle(workspaceSlug, projectId, cycleId, { force });
+    runInAction(() => {
+      set(this.cycleMap, [cycleId], { ...this.cycleMap?.[cycleId], ...response });
+    });
+    this.fetchAllCycles(workspaceSlug, projectId);
+    return response;
+  };
+
+  /**
+   * @description manually completes a cycle and auto-schedules the next (mote)
+   * @param workspaceSlug
+   * @param projectId
+   * @param cycleId
+   */
+  completeCycle = async (workspaceSlug: string, projectId: string, cycleId: string) => {
+    const response = await this.cycleService.completeCycle(workspaceSlug, projectId, cycleId);
+    runInAction(() => {
+      set(this.cycleMap, [cycleId], { ...this.cycleMap?.[cycleId], ...response });
+    });
+    // refetch to reflect any auto-scheduled next cycle
+    this.fetchAllCycles(workspaceSlug, projectId);
+    return response;
+  };
+
+  /**
+   * @description toggles the auto-schedule flag on a cycle (mote)
+   * @param workspaceSlug
+   * @param projectId
+   * @param cycleId
+   * @param autoSchedule
+   */
+  toggleAutoSchedule = async (
+    workspaceSlug: string,
+    projectId: string,
+    cycleId: string,
+    autoSchedule: boolean
+  ) => {
+    runInAction(() => {
+      set(this.cycleMap, [cycleId], { ...this.cycleMap?.[cycleId], auto_schedule: autoSchedule });
+    });
+    const response = await this.cycleService.patchCycle(workspaceSlug, projectId, cycleId, {
+      auto_schedule: autoSchedule,
+    });
+    return response;
   };
 
   /**

@@ -97,6 +97,11 @@ export interface ICycle extends TProgressSnapshot {
   owned_by_id: string;
   project_id: string;
   status?: TCycleGroups;
+  // manual lifecycle (mote): state governs status independently of dates
+  state?: TCycleGroups;
+  auto_schedule?: boolean;
+  started_at?: string | null;
+  completed_at?: string | null;
   sort_order: number;
   start_date: string | null;
   sub_issues?: number;
