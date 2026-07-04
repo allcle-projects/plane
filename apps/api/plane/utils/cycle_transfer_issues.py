@@ -152,7 +152,7 @@ def transfer_cycle_issues(
         workspace__slug=slug,
         pk=project_id,
         estimate__isnull=False,
-        estimate__type="points",
+        estimate__type__in=["points", "time"],
     ).exists()
 
     # Initialize estimate distribution variables

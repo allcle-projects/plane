@@ -128,7 +128,7 @@ def burndown_plot(queryset, slug, project_id, plot_type, cycle_id=None, module_i
         workspace__slug=slug,
         pk=project_id,
         estimate__isnull=False,
-        estimate__type="points",
+        estimate__type__in=["points", "time"],
     ).exists()
     if estimate_type and plot_type == "points" and cycle_id:
         issue_estimates = Issue.issue_objects.filter(

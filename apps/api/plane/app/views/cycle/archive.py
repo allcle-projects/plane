@@ -48,7 +48,7 @@ class CycleArchiveUnarchiveEndpoint(BaseAPIView):
         )
         backlog_estimate_point = (
             Issue.issue_objects.filter(
-                estimate_point__estimate__type="points",
+                estimate_point__estimate__type__in=["points", "time"],
                 state__group="backlog",
                 issue_cycle__cycle_id=OuterRef("pk"),
                 issue_cycle__deleted_at__isnull=True,
@@ -59,7 +59,7 @@ class CycleArchiveUnarchiveEndpoint(BaseAPIView):
         )
         unstarted_estimate_point = (
             Issue.issue_objects.filter(
-                estimate_point__estimate__type="points",
+                estimate_point__estimate__type__in=["points", "time"],
                 state__group="unstarted",
                 issue_cycle__cycle_id=OuterRef("pk"),
                 issue_cycle__deleted_at__isnull=True,
@@ -70,7 +70,7 @@ class CycleArchiveUnarchiveEndpoint(BaseAPIView):
         )
         started_estimate_point = (
             Issue.issue_objects.filter(
-                estimate_point__estimate__type="points",
+                estimate_point__estimate__type__in=["points", "time"],
                 state__group="started",
                 issue_cycle__cycle_id=OuterRef("pk"),
                 issue_cycle__deleted_at__isnull=True,
@@ -81,7 +81,7 @@ class CycleArchiveUnarchiveEndpoint(BaseAPIView):
         )
         cancelled_estimate_point = (
             Issue.issue_objects.filter(
-                estimate_point__estimate__type="points",
+                estimate_point__estimate__type__in=["points", "time"],
                 state__group="cancelled",
                 issue_cycle__cycle_id=OuterRef("pk"),
                 issue_cycle__deleted_at__isnull=True,
@@ -92,7 +92,7 @@ class CycleArchiveUnarchiveEndpoint(BaseAPIView):
         )
         completed_estimate_point = (
             Issue.issue_objects.filter(
-                estimate_point__estimate__type="points",
+                estimate_point__estimate__type__in=["points", "time"],
                 state__group="completed",
                 issue_cycle__cycle_id=OuterRef("pk"),
                 issue_cycle__deleted_at__isnull=True,
@@ -103,7 +103,7 @@ class CycleArchiveUnarchiveEndpoint(BaseAPIView):
         )
         total_estimate_point = (
             Issue.issue_objects.filter(
-                estimate_point__estimate__type="points",
+                estimate_point__estimate__type__in=["points", "time"],
                 issue_cycle__cycle_id=OuterRef("pk"),
                 issue_cycle__deleted_at__isnull=True,
             )
@@ -359,7 +359,7 @@ class CycleArchiveUnarchiveEndpoint(BaseAPIView):
                 workspace__slug=slug,
                 pk=project_id,
                 estimate__isnull=False,
-                estimate__type="points",
+                estimate__type__in=["points", "time"],
             ).exists()
 
             data["estimate_distribution"] = {}

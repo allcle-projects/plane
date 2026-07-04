@@ -663,7 +663,7 @@ class CycleProgressEndpoint(BaseAPIView):
             return Response({"error": "Cycle not found"}, status=status.HTTP_404_NOT_FOUND)
         aggregate_estimates = (
             Issue.issue_objects.filter(
-                estimate_point__estimate__type="points",
+                estimate_point__estimate__type__in=["points", "time"],
                 issue_cycle__cycle_id=cycle_id,
                 issue_cycle__deleted_at__isnull=True,
                 workspace__slug=slug,
@@ -833,7 +833,7 @@ class CycleAnalyticsEndpoint(BaseAPIView):
             workspace__slug=slug,
             pk=project_id,
             estimate__isnull=False,
-            estimate__type="points",
+            estimate__type__in=["points", "time"],
         ).exists()
 
         assignee_distribution = []

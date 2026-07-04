@@ -144,7 +144,7 @@ class ModuleViewSet(BaseViewSet):
         )
         completed_estimate_point = (
             Issue.issue_objects.filter(
-                estimate_point__estimate__type="points",
+                estimate_point__estimate__type__in=["points", "time"],
                 state__group="completed",
                 issue_module__module_id=OuterRef("pk"),
                 issue_module__deleted_at__isnull=True,
@@ -156,7 +156,7 @@ class ModuleViewSet(BaseViewSet):
 
         total_estimate_point = (
             Issue.issue_objects.filter(
-                estimate_point__estimate__type="points",
+                estimate_point__estimate__type__in=["points", "time"],
                 issue_module__module_id=OuterRef("pk"),
                 issue_module__deleted_at__isnull=True,
             )
@@ -166,7 +166,7 @@ class ModuleViewSet(BaseViewSet):
         )
         backlog_estimate_point = (
             Issue.issue_objects.filter(
-                estimate_point__estimate__type="points",
+                estimate_point__estimate__type__in=["points", "time"],
                 state__group="backlog",
                 issue_module__module_id=OuterRef("pk"),
                 issue_module__deleted_at__isnull=True,
@@ -177,7 +177,7 @@ class ModuleViewSet(BaseViewSet):
         )
         unstarted_estimate_point = (
             Issue.issue_objects.filter(
-                estimate_point__estimate__type="points",
+                estimate_point__estimate__type__in=["points", "time"],
                 state__group="unstarted",
                 issue_module__module_id=OuterRef("pk"),
                 issue_module__deleted_at__isnull=True,
@@ -188,7 +188,7 @@ class ModuleViewSet(BaseViewSet):
         )
         started_estimate_point = (
             Issue.issue_objects.filter(
-                estimate_point__estimate__type="points",
+                estimate_point__estimate__type__in=["points", "time"],
                 state__group="started",
                 issue_module__module_id=OuterRef("pk"),
                 issue_module__deleted_at__isnull=True,
@@ -199,7 +199,7 @@ class ModuleViewSet(BaseViewSet):
         )
         cancelled_estimate_point = (
             Issue.issue_objects.filter(
-                estimate_point__estimate__type="points",
+                estimate_point__estimate__type__in=["points", "time"],
                 state__group="cancelled",
                 issue_module__module_id=OuterRef("pk"),
                 issue_module__deleted_at__isnull=True,
@@ -418,7 +418,7 @@ class ModuleViewSet(BaseViewSet):
             workspace__slug=slug,
             pk=project_id,
             estimate__isnull=False,
-            estimate__type="points",
+            estimate__type__in=["points", "time"],
         ).exists()
 
         data = ModuleDetailSerializer(queryset.first()).data
