@@ -18,7 +18,7 @@ import {
   WORK_ITEM_TRACKER_ELEMENTS,
 } from "@plane/constants";
 import { Button } from "@plane/propel/button";
-import { ModuleIcon } from "@plane/propel/icons";
+import { AnalyticsIcon, ModuleIcon } from "@plane/propel/icons";
 import { Tooltip } from "@plane/propel/tooltip";
 import type { ICustomSearchSelectOption, IIssueDisplayFilterOptions, IIssueDisplayProperties } from "@plane/types";
 import { EIssuesStoreType, EIssueLayoutTypes } from "@plane/types";
@@ -226,6 +226,19 @@ export const ModuleIssuesHeader = observer(function ModuleIssuesHeader() {
             </FiltersDropdown>
           </div>
 
+          {moduleId && (
+            <Button
+              className="hidden md:block"
+              onClick={() => router.push(`/${workspaceSlug}/projects/${projectId}/modules/${moduleId}/overview`)}
+              variant="secondary"
+              size="lg"
+            >
+              <span className="hidden @4xl:flex">Overview</span>
+              <span className="@4xl:hidden">
+                <AnalyticsIcon className="size-3.5" />
+              </span>
+            </Button>
+          )}
           {canUserCreateIssue ? (
             <>
               <Button className="hidden md:block" onClick={() => setAnalyticsModal(true)} variant="secondary" size="lg">
