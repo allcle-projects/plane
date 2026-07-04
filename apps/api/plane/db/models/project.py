@@ -10,6 +10,7 @@ from enum import Enum
 # Django imports
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.contrib.postgres.indexes import GinIndex
 from django.db import models
 from django.db.models import Q
 
@@ -164,6 +165,10 @@ class Project(BaseModel):
         verbose_name_plural = "Projects"
         db_table = "projects"
         ordering = ("-created_at",)
+        indexes = [
+            GinIndex(fields=["name"], opclasses=["gin_trgm_ops"], name="project_name_trgm_idx"),
+            GinIndex(fields=["identifier"], opclasses=["gin_trgm_ops"], name="project_ident_trgm_idx"),
+        ]
 
     def save(self, *args, **kwargs):
         from plane.db.models import Workspace

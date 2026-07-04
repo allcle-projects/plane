@@ -45,7 +45,7 @@ from plane.db.models import (
     IssueRelation,
 )
 from plane.db.models.project import ProjectNetwork
-from plane.utils.issue_search import search_issues
+from plane.utils.issue_search import search_issues, ranked_search
 from plane.utils.openapi import (
     WORKSPACE_SLUG_PARAMETER,
     PROJECT_ID_PARAMETER,
@@ -66,55 +66,55 @@ class GlobalSearchAPIEndpoint(BaseAPIView):
     use_read_replica = True
 
     def filter_workspaces(self, query, _slug, _project_id, _workspace_search):
-        fields = ["name"]
-        q = Q()
-        if query:
-            for field in fields:
-                q |= Q(**{f"{field}__icontains": query})
+        match_q = Q(name__icontains=query) if query else Q()
         return (
-            Workspace.objects.filter(q, workspace_member__member=self.request.user)
-            .order_by("-created_at")
+            ranked_search(
+                Workspace.objects.filter(workspace_member__member=self.request.user),
+                query,
+                ["name"],
+                match_q,
+            )
             .distinct()
             .values("name", "id", "slug")
         )
 
     def filter_projects(self, query, slug, _project_id, _workspace_search):
-        fields = ["name", "identifier"]
-        q = Q()
+        match_q = Q()
         if query:
-            for field in fields:
-                q |= Q(**{f"{field}__icontains": query})
+            match_q = Q(name__icontains=query) | Q(identifier__icontains=query)
         return (
-            Project.objects.filter(
-                q,
-                project_projectmember__member=self.request.user,
-                project_projectmember__is_active=True,
-                archived_at__isnull=True,
-                workspace__slug=slug,
+            ranked_search(
+                Project.objects.filter(
+                    project_projectmember__member=self.request.user,
+                    project_projectmember__is_active=True,
+                    archived_at__isnull=True,
+                    workspace__slug=slug,
+                ),
+                query,
+                ["name", "identifier"],
+                match_q,
             )
-            .order_by("-created_at")
             .distinct()
             .values("name", "id", "identifier", "workspace__slug")
         )
 
     def filter_issues(self, query, slug, project_id, workspace_search):
-        fields = ["name", "sequence_id", "project__identifier"]
-        q = Q()
+        match_q = Q()
         if query:
-            for field in fields:
-                if field == "sequence_id":
-                    sequences = re.findall(r"\b\d+\b", query)
-                    for sequence_id in sequences:
-                        q |= Q(**{"sequence_id": sequence_id})
-                else:
-                    q |= Q(**{f"{field}__icontains": query})
+            match_q = Q(name__icontains=query) | Q(project__identifier__icontains=query)
+            for sequence_id in re.findall(r"\b\d+\b", query):
+                match_q |= Q(sequence_id=sequence_id)
 
-        issues = Issue.issue_objects.filter(
-            q,
-            project__project_projectmember__member=self.request.user,
-            project__project_projectmember__is_active=True,
-            project__archived_at__isnull=True,
-            workspace__slug=slug,
+        issues = ranked_search(
+            Issue.issue_objects.filter(
+                project__project_projectmember__member=self.request.user,
+                project__project_projectmember__is_active=True,
+                project__archived_at__isnull=True,
+                workspace__slug=slug,
+            ),
+            query,
+            ["name", "project__identifier"],
+            match_q,
         )
 
         if workspace_search == "false" and project_id:
@@ -130,67 +130,63 @@ class GlobalSearchAPIEndpoint(BaseAPIView):
         )[:100]
 
     def filter_cycles(self, query, slug, project_id, workspace_search):
-        fields = ["name"]
-        q = Q()
-        if query:
-            for field in fields:
-                q |= Q(**{f"{field}__icontains": query})
+        match_q = Q(name__icontains=query) if query else Q()
 
-        cycles = Cycle.objects.filter(
-            q,
-            project__project_projectmember__member=self.request.user,
-            project__project_projectmember__is_active=True,
-            project__archived_at__isnull=True,
-            workspace__slug=slug,
+        cycles = ranked_search(
+            Cycle.objects.filter(
+                project__project_projectmember__member=self.request.user,
+                project__project_projectmember__is_active=True,
+                project__archived_at__isnull=True,
+                workspace__slug=slug,
+            ),
+            query,
+            ["name"],
+            match_q,
         )
 
         if workspace_search == "false" and project_id:
             cycles = cycles.filter(project_id=project_id)
 
-        return (
-            cycles.order_by("-created_at")
-            .distinct()
-            .values("name", "id", "project_id", "project__identifier", "workspace__slug")
+        return cycles.distinct().values(
+            "name", "id", "project_id", "project__identifier", "workspace__slug"
         )
 
     def filter_modules(self, query, slug, project_id, workspace_search):
-        fields = ["name"]
-        q = Q()
-        if query:
-            for field in fields:
-                q |= Q(**{f"{field}__icontains": query})
+        match_q = Q(name__icontains=query) if query else Q()
 
-        modules = Module.objects.filter(
-            q,
-            project__project_projectmember__member=self.request.user,
-            project__project_projectmember__is_active=True,
-            project__archived_at__isnull=True,
-            workspace__slug=slug,
+        modules = ranked_search(
+            Module.objects.filter(
+                project__project_projectmember__member=self.request.user,
+                project__project_projectmember__is_active=True,
+                project__archived_at__isnull=True,
+                workspace__slug=slug,
+            ),
+            query,
+            ["name"],
+            match_q,
         )
 
         if workspace_search == "false" and project_id:
             modules = modules.filter(project_id=project_id)
 
-        return (
-            modules.order_by("-created_at")
-            .distinct()
-            .values("name", "id", "project_id", "project__identifier", "workspace__slug")
+        return modules.distinct().values(
+            "name", "id", "project_id", "project__identifier", "workspace__slug"
         )
 
     def filter_pages(self, query, slug, project_id, workspace_search):
-        fields = ["name"]
-        q = Q()
-        if query:
-            for field in fields:
-                q |= Q(**{f"{field}__icontains": query})
+        match_q = Q(name__icontains=query) if query else Q()
 
         pages = (
-            Page.objects.filter(
-                q,
-                projects__project_projectmember__member=self.request.user,
-                projects__project_projectmember__is_active=True,
-                projects__archived_at__isnull=True,
-                workspace__slug=slug,
+            ranked_search(
+                Page.objects.filter(
+                    projects__project_projectmember__member=self.request.user,
+                    projects__project_projectmember__is_active=True,
+                    projects__archived_at__isnull=True,
+                    workspace__slug=slug,
+                ),
+                query,
+                ["name"],
+                match_q,
             )
             .annotate(
                 project_ids=Coalesce(
@@ -217,71 +213,62 @@ class GlobalSearchAPIEndpoint(BaseAPIView):
 
             pages = pages.annotate(project_id=Subquery(project_subquery)).filter(project_id=project_id)
 
-        return (
-            pages.order_by("-created_at")
-            .distinct()
-            .values("name", "id", "project_ids", "project_identifiers", "workspace__slug")
+        return pages.distinct().values(
+            "name", "id", "project_ids", "project_identifiers", "workspace__slug"
         )
 
     def filter_views(self, query, slug, project_id, workspace_search):
-        fields = ["name"]
-        q = Q()
-        if query:
-            for field in fields:
-                q |= Q(**{f"{field}__icontains": query})
+        match_q = Q(name__icontains=query) if query else Q()
 
-        issue_views = IssueView.objects.filter(
-            q,
-            project__project_projectmember__member=self.request.user,
-            project__project_projectmember__is_active=True,
-            project__archived_at__isnull=True,
-            workspace__slug=slug,
+        issue_views = ranked_search(
+            IssueView.objects.filter(
+                project__project_projectmember__member=self.request.user,
+                project__project_projectmember__is_active=True,
+                project__archived_at__isnull=True,
+                workspace__slug=slug,
+            ),
+            query,
+            ["name"],
+            match_q,
         )
 
         if workspace_search == "false" and project_id:
             issue_views = issue_views.filter(project_id=project_id)
 
-        return (
-            issue_views.order_by("-created_at")
-            .distinct()
-            .values("name", "id", "project_id", "project__identifier", "workspace__slug")
+        return issue_views.distinct().values(
+            "name", "id", "project_id", "project__identifier", "workspace__slug"
         )
 
     def filter_intakes(self, query, slug, project_id, workspace_search):
-        fields = ["name", "sequence_id", "project__identifier"]
-        q = Q()
+        match_q = Q()
         if query:
-            for field in fields:
-                if field == "sequence_id":
-                    sequences = re.findall(r"\b\d+\b", query)
-                    for sequence_id in sequences:
-                        q |= Q(**{"sequence_id": sequence_id})
-                else:
-                    q |= Q(**{f"{field}__icontains": query})
+            match_q = Q(name__icontains=query) | Q(project__identifier__icontains=query)
+            for sequence_id in re.findall(r"\b\d+\b", query):
+                match_q |= Q(sequence_id=sequence_id)
 
-        issues = Issue.objects.filter(
-            q,
-            project__project_projectmember__member=self.request.user,
-            project__project_projectmember__is_active=True,
-            project__archived_at__isnull=True,
-            workspace__slug=slug,
-        ).filter(models.Q(issue_intake__status=0) | models.Q(issue_intake__status=-2))
+        issues = ranked_search(
+            Issue.objects.filter(
+                project__project_projectmember__member=self.request.user,
+                project__project_projectmember__is_active=True,
+                project__archived_at__isnull=True,
+                workspace__slug=slug,
+            ).filter(models.Q(issue_intake__status=0) | models.Q(issue_intake__status=-2)),
+            query,
+            ["name", "project__identifier"],
+            match_q,
+        )
 
         if workspace_search == "false" and project_id:
             issues = issues.filter(project_id=project_id)
 
-        return (
-            issues.order_by("-created_at")
-            .distinct()
-            .values(
-                "name",
-                "id",
-                "sequence_id",
-                "project__identifier",
-                "project_id",
-                "workspace__slug",
-            )[:100]
-        )
+        return issues.distinct().values(
+            "name",
+            "id",
+            "sequence_id",
+            "project__identifier",
+            "project_id",
+            "workspace__slug",
+        )[:100]
 
     @extend_schema(
         operation_id="global_search",

@@ -8,6 +8,7 @@ from typing import Optional, Any
 
 # Django imports
 from django.conf import settings
+from django.contrib.postgres.indexes import GinIndex
 from django.core.exceptions import ValidationError
 from django.db import models
 
@@ -180,6 +181,9 @@ class Workspace(BaseModel):
         verbose_name_plural = "Workspaces"
         db_table = "workspaces"
         ordering = ("-created_at",)
+        indexes = [
+            GinIndex(fields=["name"], opclasses=["gin_trgm_ops"], name="workspace_name_trgm_idx"),
+        ]
 
 
 class WorkspaceBaseModel(BaseModel):

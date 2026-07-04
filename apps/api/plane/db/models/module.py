@@ -4,6 +4,7 @@
 
 # Django imports
 from django.conf import settings
+from django.contrib.postgres.indexes import GinIndex
 from django.db import models
 from django.db.models import Q
 
@@ -111,6 +112,9 @@ class Module(ProjectBaseModel):
         verbose_name_plural = "Modules"
         db_table = "modules"
         ordering = ("-created_at",)
+        indexes = [
+            GinIndex(fields=["name"], opclasses=["gin_trgm_ops"], name="module_name_trgm_idx"),
+        ]
 
     def save(self, *args, **kwargs):
         if self._state.adding:

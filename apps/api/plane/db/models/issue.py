@@ -8,6 +8,7 @@ from uuid import uuid4
 # Django imports
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
+from django.contrib.postgres.indexes import GinIndex
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models, transaction, connection
@@ -175,6 +176,9 @@ class Issue(ProjectBaseModel):
         verbose_name_plural = "Issues"
         db_table = "issues"
         ordering = ("-created_at",)
+        indexes = [
+            GinIndex(fields=["name"], opclasses=["gin_trgm_ops"], name="issue_name_trgm_idx"),
+        ]
 
     def save(self, *args, **kwargs):
         if self.state is None:

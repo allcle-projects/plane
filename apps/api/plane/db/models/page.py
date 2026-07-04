@@ -5,6 +5,7 @@
 import uuid
 
 from django.conf import settings
+from django.contrib.postgres.indexes import GinIndex
 from django.utils import timezone
 
 # Django imports
@@ -62,6 +63,9 @@ class Page(BaseModel):
         verbose_name_plural = "Pages"
         db_table = "pages"
         ordering = ("-created_at",)
+        indexes = [
+            GinIndex(fields=["name"], opclasses=["gin_trgm_ops"], name="page_name_trgm_idx"),
+        ]
 
     def __str__(self):
         """Return owner email and page name"""
