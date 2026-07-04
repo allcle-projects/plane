@@ -36,6 +36,20 @@ type BlockData = {
   project_id?: string | undefined | null;
 };
 
+// which edge the drag started from: right = predecessor (creates a "blocking" relation),
+// left = the block declares it is "blocked_by" the drop target.
+export type TDependencyDragSide = "left" | "right";
+
+export type TDependencyDrag = {
+  sourceBlockId: string;
+  sourceSide: TDependencyDragSide;
+  // live cursor translated into chart-content coordinates (same space as block.position.marginLeft
+  // and rowIndex * BLOCK_HEIGHT, i.e. the SVG layers in main-content)
+  pointer: { x: number; y: number };
+  // hit-tested drop target under the cursor, or null when hovering empty space / an invalid target
+  hoverTargetId: string | null;
+};
+
 export interface IBaseTimelineStore {
   // observables
   blockIds: string[] | undefined;
@@ -45,12 +59,17 @@ export interface IBaseTimelineStore {
   renderView: any;
   isDragging: boolean;
   isDependencyEnabled: boolean;
+  dependencyDrag: TDependencyDrag | null;
   //
   setBlockIds: (ids: string[]) => void;
   getBlockById: (blockId: string) => IGanttBlock;
   // computed functions
   getIsCurrentDependencyDragging: (blockId: string) => boolean;
   isBlockActive: (blockId: string) => boolean;
+  // dependency drag actions
+  startDependencyDrag: (sourceBlockId: string, side: TDependencyDragSide) => void;
+  updateDependencyDrag: (pointer: { x: number; y: number }, hoverTargetId: string | null) => void;
+  endDependencyDrag: () => void;
   // actions
   updateCurrentView: (view: TGanttViews) => void;
   updateCurrentViewData: (data: ChartDataType | undefined) => void;
@@ -84,6 +103,7 @@ export class BaseTimeLineStore implements IBaseTimelineStore {
   rootStore: RootStore;
 
   isDependencyEnabled = false;
+  dependencyDrag: TDependencyDrag | null = null;
 
   constructor(_rootStore: RootStore) {
     makeObservable(this, {
@@ -95,6 +115,7 @@ export class BaseTimeLineStore implements IBaseTimelineStore {
       currentViewData: observable,
       activeBlockId: observable.ref,
       renderView: observable,
+      dependencyDrag: observable.ref,
       // actions
       setIsDragging: action,
       setBlockIds: action.bound,
@@ -103,6 +124,9 @@ export class BaseTimeLineStore implements IBaseTimelineStore {
       updateCurrentViewData: action.bound,
       updateActiveBlockId: action.bound,
       updateRenderView: action.bound,
+      startDependencyDrag: action.bound,
+      updateDependencyDrag: action.bound,
+      endDependencyDrag: action.bound,
     });
 
     this.initGantt();
@@ -342,6 +366,42 @@ export class BaseTimeLineStore implements IBaseTimelineStore {
     });
   });
 
-  // Dummy method to return if the current Block's dependency is being dragged
-  getIsCurrentDependencyDragging = computedFn((_blockId: string) => false);
+  /**
+   * @description returns true if the block is either the source of the active dependency drag
+   * or the currently hit-tested drop target. Consumed by `block.tsx` to keep the block rendered
+   * (`forceRender`) and highlighted while a dependency is being drawn.
+   */
+  getIsCurrentDependencyDragging = computedFn(
+    (blockId: string) =>
+      this.dependencyDrag?.sourceBlockId === blockId || this.dependencyDrag?.hoverTargetId === blockId
+  );
+
+  /**
+   * @description begin a dependency drag from a block edge handle
+   * @param sourceBlockId the block whose handle was grabbed
+   * @param side "right" => predecessor (blocking), "left" => blocked_by
+   */
+  startDependencyDrag = (sourceBlockId: string, side: TDependencyDragSide) => {
+    this.dependencyDrag = {
+      sourceBlockId,
+      sourceSide: side,
+      pointer: { x: 0, y: 0 },
+      hoverTargetId: null,
+    };
+  };
+
+  /**
+   * @description update the live pointer position (chart coords) and hit-tested drop target
+   */
+  updateDependencyDrag = (pointer: { x: number; y: number }, hoverTargetId: string | null) => {
+    if (!this.dependencyDrag) return;
+    this.dependencyDrag = { ...this.dependencyDrag, pointer, hoverTargetId };
+  };
+
+  /**
+   * @description clear dependency drag state (drop / cancel / cleanup)
+   */
+  endDependencyDrag = () => {
+    this.dependencyDrag = null;
+  };
 }

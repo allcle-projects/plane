@@ -5,13 +5,23 @@
  */
 
 import type { RefObject } from "react";
+import { observer } from "mobx-react";
 import type { IGanttBlock } from "@plane/types";
+import { useDependencyDraggable } from "./use-dependency-draggable";
 
 type LeftDependencyDraggableProps = {
   block: IGanttBlock;
   ganttContainerRef: RefObject<HTMLDivElement>;
 };
 
-export function LeftDependencyDraggable(_props: LeftDependencyDraggableProps) {
-  return <></>;
-}
+export const LeftDependencyDraggable = observer(function LeftDependencyDraggable(props: LeftDependencyDraggableProps) {
+  const { block } = props;
+  const { onPointerDown } = useDependencyDraggable(block, "left");
+
+  return (
+    <div
+      onPointerDown={onPointerDown}
+      className="absolute top-1/2 -left-4 z-[7] h-3 w-3 -translate-y-1/2 cursor-crosshair touch-none rounded-full border border-subtle bg-surface-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+    />
+  );
+});

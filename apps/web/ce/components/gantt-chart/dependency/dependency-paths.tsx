@@ -9,36 +9,11 @@ import { EIssueServiceType } from "@plane/types";
 import { BLOCK_HEIGHT } from "@/components/gantt-chart/constants";
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useTimeLineChartStore } from "@/hooks/use-timeline-chart";
+import { getDependencyPath } from "./get-dependency-path";
 
 type Props = {
   isEpic?: boolean;
 };
-
-// horizontal distance (px) the path travels before it is allowed to turn towards the target row
-const BEND_OFFSET = 20;
-// radius (px) used to round off the elbow corners
-const CORNER_RADIUS = 6;
-
-/**
- * builds an elbow-shaped (Manhattan style) path between a predecessor's end
- * and a successor's start, regardless of their relative row/column position.
- */
-function getDependencyPath(x1: number, y1: number, x2: number, y2: number): string {
-  if (y1 === y2) return `M${x1},${y1} L${x2},${y2}`;
-
-  const bendX = x1 + BEND_OFFSET;
-  const verticalSign = y2 > y1 ? 1 : -1;
-  const radius = Math.min(CORNER_RADIUS, Math.abs(y2 - y1) / 2);
-
-  return [
-    `M${x1},${y1}`,
-    `L${bendX - radius},${y1}`,
-    `Q${bendX},${y1} ${bendX},${y1 + radius * verticalSign}`,
-    `L${bendX},${y2 - radius * verticalSign}`,
-    `Q${bendX},${y2} ${bendX + radius},${y2}`,
-    `L${x2},${y2}`,
-  ].join(" ");
-}
 
 export const TimelineDependencyPaths = observer(function TimelineDependencyPaths(props: Props) {
   const { isEpic = false } = props;

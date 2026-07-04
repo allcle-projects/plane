@@ -15,6 +15,8 @@ export interface IModulesTimeLineStore extends IBaseTimelineStore {
 }
 
 export class ModulesTimeLineStore extends BaseTimeLineStore implements IModulesTimeLineStore {
+  isDependencyEnabled = true;
+
   constructor(_rootStore: RootStore) {
     super(_rootStore);
 
