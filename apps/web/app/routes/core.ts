@@ -355,6 +355,11 @@ export const coreRoutes: RouteConfigEntry[] = [
                 "./(all)/[workspaceSlug]/(settings)/settings/projects/[projectId]/automations/page.tsx"
               ),
             ]),
+            // Project Integrations (mote — Option B mapping maintenance)
+            route(
+              ":workspaceSlug/settings/projects/:projectId/integrations",
+              "./(all)/[workspaceSlug]/(settings)/settings/projects/[projectId]/integrations/page.tsx"
+            ),
           ]),
         ]),
       ]),

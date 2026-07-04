@@ -15,7 +15,9 @@ class GithubRepository(ProjectBaseModel):
     name = models.CharField(max_length=500)
     url = models.URLField(null=True)
     config = models.JSONField(default=dict)
-    repository_id = models.BigIntegerField()
+    # Nullable so the table doubles as a lightweight (Option B) project↔repo map
+    # where an admin records "owner/name" without the numeric GitHub repo id.
+    repository_id = models.BigIntegerField(null=True, blank=True)
     owner = models.CharField(max_length=500)
 
     def __str__(self):

@@ -232,6 +232,11 @@ from .webhook.base import (
     WebhookSecretRegenerateEndpoint,
 )
 
+from .integration.base import (
+    SlackProjectSyncEndpoint,
+    GithubRepositorySyncEndpoint,
+)
+
 from .error_404 import custom_404_view
 
 from .notification.base import MarkAllReadNotificationViewSet

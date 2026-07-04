@@ -125,6 +125,7 @@ from .notification import NotificationSerializer, UserNotificationPreferenceSeri
 from .exporter import ExporterHistorySerializer
 
 from .webhook import WebhookSerializer, WebhookLogSerializer
+from .integration import SlackProjectSyncSerializer, GithubRepositorySerializer
 
 from .favorite import UserFavoriteSerializer
 
