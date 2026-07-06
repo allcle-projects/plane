@@ -35,6 +35,8 @@ from .issue import (
     IssueRelationRemoveAPIEndpoint,
 )
 
+from .worklog import IssueWorklogListCreateAPIEndpoint
+
 from .reaction import (
     IssueReactionListCreateAPIEndpoint,
     IssueReactionDetailAPIEndpoint,

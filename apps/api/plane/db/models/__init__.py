@@ -93,3 +93,5 @@ from .sticky import Sticky
 from .description import Description, DescriptionVersion
 
 from .mfa import UserMFA, MFABackupCode
+
+from .worklog import IssueWorklog, IssueTimer

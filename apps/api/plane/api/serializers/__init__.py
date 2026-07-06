@@ -89,3 +89,4 @@ from .draft import (
     DraftIssueDetailSerializer,
     DraftIssueCreateSerializer,
 )
+from .worklog import IssueWorklogSerializer

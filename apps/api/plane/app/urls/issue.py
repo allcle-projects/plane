@@ -31,6 +31,9 @@ from plane.app.views import (
     WorkItemDescriptionVersionEndpoint,
     IssueMetaEndpoint,
     IssueDetailIdentifierEndpoint,
+    IssueWorklogViewSet,
+    IssueTimerViewSet,
+    ProjectWorklogSummaryEndpoint,
 )
 
 urlpatterns = [
@@ -283,4 +286,38 @@ urlpatterns = [
         IssueDetailIdentifierEndpoint.as_view(),
         name="issue-detail-identifier",
     ),
+    ## Worklogs (Time Tracking)
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/issues/<uuid:issue_id>/worklogs/",
+        IssueWorklogViewSet.as_view({"get": "list", "post": "create"}),
+        name="project-issue-worklogs",
+    ),
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/issues/<uuid:issue_id>/worklogs/<uuid:pk>/",
+        IssueWorklogViewSet.as_view({"get": "retrieve", "patch": "partial_update", "delete": "destroy"}),
+        name="project-issue-worklogs",
+    ),
+    # Timer
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/issues/<uuid:issue_id>/timer/",
+        IssueTimerViewSet.as_view({"get": "current"}),
+        name="project-issue-timer",
+    ),
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/issues/<uuid:issue_id>/timer/start/",
+        IssueTimerViewSet.as_view({"post": "start"}),
+        name="project-issue-timer-start",
+    ),
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/issues/<uuid:issue_id>/timer/stop/",
+        IssueTimerViewSet.as_view({"post": "stop"}),
+        name="project-issue-timer-stop",
+    ),
+    # Aggregation
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/worklogs/summary/",
+        ProjectWorklogSummaryEndpoint.as_view(),
+        name="project-worklogs-summary",
+    ),
+    ## End Worklogs
 ]

@@ -590,6 +590,7 @@ export default {
     },
     comments: "Comments",
     updates: "Updates",
+    worklog: "Worklog",
     clear_all: "Clear all",
     copied: "Copied!",
     link_copied: "Link copied!",

@@ -1067,6 +1067,98 @@ def delete_attachment_activity(
     )
 
 
+def create_worklog_activity(
+    requested_data,
+    current_instance,
+    issue_id,
+    project_id,
+    workspace_id,
+    actor_id,
+    issue_activities,
+    epoch,
+):
+    requested_data = json.loads(requested_data) if requested_data is not None else None
+
+    issue_activities.append(
+        IssueActivity(
+            issue_id=issue_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            comment="logged time",
+            verb="created",
+            actor_id=actor_id,
+            field="worklog",
+            new_value=str(requested_data.get("duration", "")) if requested_data else "",
+            new_identifier=requested_data.get("id") if requested_data else None,
+            epoch=epoch,
+        )
+    )
+
+
+def update_worklog_activity(
+    requested_data,
+    current_instance,
+    issue_id,
+    project_id,
+    workspace_id,
+    actor_id,
+    issue_activities,
+    epoch,
+):
+    requested_data = json.loads(requested_data) if requested_data is not None else None
+    current_instance = json.loads(current_instance) if current_instance is not None else None
+
+    if (
+        requested_data
+        and "duration" in requested_data
+        and current_instance
+        and str(current_instance.get("duration")) != str(requested_data.get("duration"))
+    ):
+        issue_activities.append(
+            IssueActivity(
+                issue_id=issue_id,
+                project_id=project_id,
+                workspace_id=workspace_id,
+                comment="updated logged time",
+                verb="updated",
+                actor_id=actor_id,
+                field="worklog",
+                old_value=str(current_instance.get("duration", "")),
+                new_value=str(requested_data.get("duration", "")),
+                new_identifier=current_instance.get("id"),
+                epoch=epoch,
+            )
+        )
+
+
+def delete_worklog_activity(
+    requested_data,
+    current_instance,
+    issue_id,
+    project_id,
+    workspace_id,
+    actor_id,
+    issue_activities,
+    epoch,
+):
+    current_instance = json.loads(current_instance) if current_instance is not None else None
+
+    issue_activities.append(
+        IssueActivity(
+            issue_id=issue_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            comment="deleted logged time",
+            verb="deleted",
+            actor_id=actor_id,
+            field="worklog",
+            old_value=str(current_instance.get("duration", "")) if current_instance else "",
+            new_value="",
+            epoch=epoch,
+        )
+    )
+
+
 def create_issue_reaction_activity(
     requested_data,
     current_instance,
@@ -1553,6 +1645,9 @@ def issue_activity(
             "link.activity.deleted": delete_link_activity,
             "attachment.activity.created": create_attachment_activity,
             "attachment.activity.deleted": delete_attachment_activity,
+            "worklog.activity.created": create_worklog_activity,
+            "worklog.activity.updated": update_worklog_activity,
+            "worklog.activity.deleted": delete_worklog_activity,
             "issue_relation.activity.created": create_issue_relation_activity,
             "issue_relation.activity.deleted": delete_issue_relation_activity,
             "issue_reaction.activity.created": create_issue_reaction_activity,

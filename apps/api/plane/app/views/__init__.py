@@ -154,6 +154,12 @@ from .issue.subscriber import IssueSubscriberViewSet
 
 from .issue.version import IssueVersionEndpoint, WorkItemDescriptionVersionEndpoint
 
+from .issue.worklog import (
+    IssueWorklogViewSet,
+    IssueTimerViewSet,
+    ProjectWorklogSummaryEndpoint,
+)
+
 from .module.base import (
     ModuleViewSet,
     ModuleLinkViewSet,
