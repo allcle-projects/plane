@@ -11,6 +11,8 @@ from plane.app.views import (
     PagesDescriptionViewSet,
     PageVersionEndpoint,
     PageDuplicateEndpoint,
+    PageCommentViewSet,
+    PageCommentReactionViewSet,
 )
 
 urlpatterns = [
@@ -72,5 +74,71 @@ urlpatterns = [
         "workspaces/<str:slug>/projects/<uuid:project_id>/pages/<uuid:page_id>/duplicate/",
         PageDuplicateEndpoint.as_view(),
         name="page-duplicate",
+    ),
+    # Workspace-scoped (global / wiki) pages
+    path(
+        "workspaces/<str:slug>/pages/",
+        PageViewSet.as_view({"get": "list", "post": "create"}),
+        name="workspace-pages",
+    ),
+    path(
+        "workspaces/<str:slug>/pages/<uuid:page_id>/",
+        PageViewSet.as_view({"get": "retrieve", "patch": "partial_update", "delete": "destroy"}),
+        name="workspace-pages",
+    ),
+    # archived pages
+    path(
+        "workspaces/<str:slug>/pages/<uuid:page_id>/archive/",
+        PageViewSet.as_view({"post": "archive", "delete": "unarchive"}),
+        name="workspace-page-archive-unarchive",
+    ),
+    # lock and unlock
+    path(
+        "workspaces/<str:slug>/pages/<uuid:page_id>/lock/",
+        PageViewSet.as_view({"post": "lock", "delete": "unlock"}),
+        name="workspace-pages-lock-unlock",
+    ),
+    # private and public page
+    path(
+        "workspaces/<str:slug>/pages/<uuid:page_id>/access/",
+        PageViewSet.as_view({"post": "access"}),
+        name="workspace-pages-access",
+    ),
+    path(
+        "workspaces/<str:slug>/pages/<uuid:page_id>/description/",
+        PagesDescriptionViewSet.as_view({"get": "retrieve", "patch": "partial_update"}),
+        name="workspace-page-description",
+    ),
+    path(
+        "workspaces/<str:slug>/pages/<uuid:page_id>/versions/",
+        PageVersionEndpoint.as_view(),
+        name="workspace-page-versions",
+    ),
+    path(
+        "workspaces/<str:slug>/pages/<uuid:page_id>/versions/<uuid:pk>/",
+        PageVersionEndpoint.as_view(),
+        name="workspace-page-versions",
+    ),
+    # Page comments (workspace-scoped; serves both project & global / wiki pages)
+    path(
+        "workspaces/<str:slug>/pages/<uuid:page_id>/comments/",
+        PageCommentViewSet.as_view({"get": "list", "post": "create"}),
+        name="page-comments",
+    ),
+    path(
+        "workspaces/<str:slug>/pages/<uuid:page_id>/comments/<uuid:pk>/",
+        PageCommentViewSet.as_view({"get": "retrieve", "patch": "partial_update", "delete": "destroy"}),
+        name="page-comments",
+    ),
+    # Page comment reactions
+    path(
+        "workspaces/<str:slug>/pages/<uuid:page_id>/comments/<uuid:comment_id>/reactions/",
+        PageCommentReactionViewSet.as_view({"post": "create"}),
+        name="page-comment-reactions",
+    ),
+    path(
+        "workspaces/<str:slug>/pages/<uuid:page_id>/comments/<uuid:comment_id>/reactions/<str:reaction_code>/",
+        PageCommentReactionViewSet.as_view({"delete": "destroy"}),
+        name="page-comment-reactions",
     ),
 ]

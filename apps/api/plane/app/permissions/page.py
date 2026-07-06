@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # See the LICENSE file for details.
 
-from plane.db.models import ProjectMember, Page
+from plane.db.models import ProjectMember, Page, WorkspaceMember
 from plane.app.permissions import ROLE
 
 
@@ -123,3 +123,26 @@ class ProjectPagePermission(BasePermission):
         if not project_member_exists:
             return False
         return True
+
+
+class WorkspacePagePermission(ProjectPagePermission):
+    """
+    Permission for workspace-level (global / wiki) pages that are not tied to a
+    project. Falls back to a workspace-member role check instead of a
+    project-member one, while keeping the same public/private page semantics as
+    project pages.
+    """
+
+    def _check_access_and_get_role(self, request, slug, project_id):
+        role = (
+            WorkspaceMember.objects.filter(
+                member=request.user,
+                workspace__slug=slug,
+                is_active=True,
+            )
+            .values_list("role", flat=True)
+            .first()
+        )
+        if not role:
+            return False, None
+        return True, role

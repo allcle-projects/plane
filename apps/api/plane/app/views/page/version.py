@@ -10,13 +10,19 @@ from rest_framework.response import Response
 from plane.db.models import PageVersion
 from ..base import BaseAPIView
 from plane.app.serializers import PageVersionSerializer, PageVersionDetailSerializer
-from plane.app.permissions import ProjectPagePermission
+from plane.app.permissions import ProjectPagePermission, WorkspacePagePermission
 
 
 class PageVersionEndpoint(BaseAPIView):
     permission_classes = [ProjectPagePermission]
 
-    def get(self, request, slug, project_id, page_id, pk=None):
+    def get_permissions(self):
+        # Workspace-scoped (global / wiki) pages have no project in scope.
+        if self.kwargs.get("project_id"):
+            return [ProjectPagePermission()]
+        return [WorkspacePagePermission()]
+
+    def get(self, request, slug, page_id, pk=None, project_id=None):
         # Check if pk is provided
         if pk:
             # Return a single page version

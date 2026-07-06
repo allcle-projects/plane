@@ -33,10 +33,9 @@ export const PagesListMainContent = observer(function PagesListMainContent(props
   const { t } = useTranslation();
   // store hooks
   const { currentProjectDetails } = useProject();
-  const { isAnyPageAvailable, getCurrentProjectFilteredPageIdsByTab, getCurrentProjectPageIdsByTab, loader } =
+  const { isAnyPageAvailable, getCurrentProjectFilteredPageIdsByTab, getCurrentProjectPageIdsByTab, loader, createPage } =
     usePageStore(storeType);
   const { allowPermissions } = useUserPermissions();
-  const { createPage } = usePageStore(EPageStoreType.PROJECT);
   // states
   const [isCreatingPage, setIsCreatingPage] = useState(false);
   // router
@@ -60,8 +59,11 @@ export const PagesListMainContent = observer(function PagesListMainContent(props
 
     await createPage(payload)
       .then((res) => {
-        const pageId = `/${workspaceSlug}/projects/${currentProjectDetails?.id}/pages/${res?.id}`;
-        router.push(pageId);
+        const redirectionLink =
+          storeType === EPageStoreType.WORKSPACE
+            ? `/${workspaceSlug}/wiki/${res?.id}`
+            : `/${workspaceSlug}/projects/${currentProjectDetails?.id}/pages/${res?.id}`;
+        router.push(redirectionLink);
       })
       .catch((err) => {
         setToast({

@@ -9,11 +9,14 @@ import Link from "next/link";
 import type { TPageNavigationTabs } from "@plane/types";
 // helpers
 import { cn } from "@plane/utils";
+// plane web hooks
+import { EPageStoreType } from "@/plane-web/hooks/store";
 
 type TPageTabNavigation = {
   workspaceSlug: string;
   projectId: string;
   pageType: TPageNavigationTabs;
+  storeType?: EPageStoreType;
 };
 
 // pages tab options
@@ -33,7 +36,12 @@ const pageTabs: { key: TPageNavigationTabs; label: string }[] = [
 ];
 
 export function PageTabNavigation(props: TPageTabNavigation) {
-  const { workspaceSlug, projectId, pageType } = props;
+  const { workspaceSlug, projectId, pageType, storeType } = props;
+
+  const basePath =
+    storeType === EPageStoreType.WORKSPACE
+      ? `/${workspaceSlug}/wiki`
+      : `/${workspaceSlug}/projects/${projectId}/pages`;
 
   const handleTabClick = (e: React.MouseEvent<HTMLAnchorElement>, tabKey: TPageNavigationTabs) => {
     if (tabKey === pageType) e.preventDefault();
@@ -44,7 +52,7 @@ export function PageTabNavigation(props: TPageTabNavigation) {
       {pageTabs.map((tab) => (
         <Link
           key={tab.key}
-          href={`/${workspaceSlug}/projects/${projectId}/pages?type=${tab.key}`}
+          href={`${basePath}?type=${tab.key}`}
           onClick={(e) => handleTabClick(e, tab.key)}
           className="flex h-full flex-col"
         >

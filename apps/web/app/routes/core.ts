@@ -114,6 +114,19 @@ export const coreRoutes: RouteConfigEntry[] = [
           ),
         ]),
 
+        // Wiki (workspace-level global pages) - Detail
+        layout("./(all)/[workspaceSlug]/(projects)/wiki/(detail)/layout.tsx", [
+          route(
+            ":workspaceSlug/wiki/:pageId",
+            "./(all)/[workspaceSlug]/(projects)/wiki/(detail)/[pageId]/page.tsx"
+          ),
+        ]),
+
+        // Wiki (workspace-level global pages) - List
+        layout("./(all)/[workspaceSlug]/(projects)/wiki/(list)/layout.tsx", [
+          route(":workspaceSlug/wiki", "./(all)/[workspaceSlug]/(projects)/wiki/(list)/page.tsx"),
+        ]),
+
         // Archived Projects
         layout("./(all)/[workspaceSlug]/(projects)/projects/(detail)/archives/layout.tsx", [
           route(

@@ -4,6 +4,8 @@
  * See the LICENSE file for details.
  */
 
+// components
+import { PageCommentsRoot } from "@/components/pages/comments/root";
 // store
 import type { TPageInstance } from "@/store/pages/base-page";
 // local imports
@@ -14,6 +16,10 @@ export type TPageNavigationPaneAdditionalTabPanelsRootProps = {
   page: TPageInstance;
 };
 
-export function PageNavigationPaneAdditionalTabPanelsRoot(_props: TPageNavigationPaneAdditionalTabPanelsRootProps) {
+export function PageNavigationPaneAdditionalTabPanelsRoot(props: TPageNavigationPaneAdditionalTabPanelsRootProps) {
+  const { activeTab, page } = props;
+
+  if (activeTab === "comments") return <PageCommentsRoot page={page} />;
+
   return null;
 }

@@ -2550,6 +2550,13 @@ export default {
           description: "Add images to see them here.",
         },
       },
+      comments: {
+        label: "Comments",
+        empty_state: {
+          title: "No comments yet",
+          description: "Start the conversation by adding a comment.",
+        },
+      },
     },
     open_button: "Open navigation pane",
     close_button: "Close navigation pane",

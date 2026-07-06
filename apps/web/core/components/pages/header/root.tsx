@@ -63,7 +63,12 @@ export const PagesListHeaderRoot = observer(function PagesListHeaderRoot(props: 
     <>
       <Header variant={EHeaderVariant.SECONDARY}>
         <Header.LeftItem>
-          <PageTabNavigation workspaceSlug={workspaceSlug} projectId={projectId} pageType={pageType} />
+          <PageTabNavigation
+            workspaceSlug={workspaceSlug}
+            projectId={projectId}
+            pageType={pageType}
+            storeType={storeType}
+          />
         </Header.LeftItem>
         <Header.RightItem className="items-center">
           <PageSearchInput

@@ -8,6 +8,7 @@ import base64
 
 # Module imports
 from .base import BaseSerializer
+from .user import UserLiteSerializer
 from plane.utils.content_validator import (
     validate_binary_data,
     validate_html_content,
@@ -19,6 +20,9 @@ from plane.db.models import (
     ProjectPage,
     Project,
     PageVersion,
+    Workspace,
+    PageComment,
+    PageCommentReaction,
 )
 
 
@@ -66,8 +70,12 @@ class PageSerializer(BaseSerializer):
         description_binary = self.context["description_binary"]
         description_html = self.context["description_html"]
 
-        # Get the workspace id from the project
-        project = Project.objects.get(pk=project_id)
+        # Resolve the workspace: project-scoped pages inherit it from the
+        # project, workspace-scoped (global/wiki) pages resolve it from the slug.
+        if project_id:
+            workspace_id = Project.objects.get(pk=project_id).workspace_id
+        else:
+            workspace_id = Workspace.objects.get(slug=self.context["workspace_slug"]).id
 
         # Create the page
         page = Page.objects.create(
@@ -76,17 +84,19 @@ class PageSerializer(BaseSerializer):
             description_binary=description_binary,
             description_html=description_html,
             owned_by_id=owned_by_id,
-            workspace_id=project.workspace_id,
+            workspace_id=workspace_id,
+            is_global=not project_id,
         )
 
-        # Create the project page
-        ProjectPage.objects.create(
-            workspace_id=page.workspace_id,
-            project_id=project_id,
-            page_id=page.id,
-            created_by_id=page.created_by_id,
-            updated_by_id=page.updated_by_id,
-        )
+        # Create the project page only for project-scoped pages
+        if project_id:
+            ProjectPage.objects.create(
+                workspace_id=page.workspace_id,
+                project_id=project_id,
+                page_id=page.id,
+                created_by_id=page.created_by_id,
+                updated_by_id=page.updated_by_id,
+            )
 
         # Create page labels
         if labels is not None:
@@ -176,6 +186,47 @@ class PageBinaryUpdateSerializer(serializers.Serializer):
     description_binary = serializers.CharField(required=False, allow_blank=True)
     description_html = serializers.CharField(required=False, allow_blank=True)
     description_json = serializers.JSONField(required=False, allow_null=True)
+
+
+class PageCommentReactionSerializer(BaseSerializer):
+    display_name = serializers.CharField(source="actor.display_name", read_only=True)
+
+    class Meta:
+        model = PageCommentReaction
+        fields = [
+            "id",
+            "actor",
+            "comment",
+            "reaction",
+            "display_name",
+            "deleted_at",
+            "workspace",
+            "project",
+            "created_at",
+            "updated_at",
+            "created_by",
+            "updated_by",
+        ]
+        read_only_fields = ["workspace", "project", "comment", "actor", "deleted_at", "created_by", "updated_by"]
+
+
+class PageCommentSerializer(BaseSerializer):
+    actor_detail = UserLiteSerializer(read_only=True, source="actor")
+    reactions = PageCommentReactionSerializer(read_only=True, many=True)
+
+    class Meta:
+        model = PageComment
+        fields = "__all__"
+        read_only_fields = [
+            "workspace",
+            "project",
+            "page",
+            "actor",
+            "created_by",
+            "updated_by",
+            "created_at",
+            "updated_at",
+        ]
 
     def validate_description_binary(self, value):
         """Validate the base64-encoded binary data"""
