@@ -97,6 +97,11 @@ export enum EAuthenticationErrorCodes {
   ADMIN_USER_ALREADY_EXIST = "5180",
   ADMIN_USER_DOES_NOT_EXIST = "5185",
   ADMIN_USER_DEACTIVATED = "5190",
+  // MFA / Two-Factor Authentication
+  MFA_REQUIRED = "5200",
+  MFA_PENDING_EXPIRED = "5205",
+  MFA_INVALID_CODE = "5210",
+  MFA_NOT_ENROLLED = "5215",
   // Rate limit
   RATE_LIMIT_EXCEEDED = "5900",
 }
@@ -370,6 +375,24 @@ const errorCodeMessages: {
     title: "",
     message: () => `Rate limit exceeded. Please try again later.`,
   },
+
+  // MFA / Two-Factor Authentication
+  [EAuthenticationErrorCodes.MFA_REQUIRED]: {
+    title: `Two-factor authentication required`,
+    message: () => `Enter your authentication code to continue.`,
+  },
+  [EAuthenticationErrorCodes.MFA_PENDING_EXPIRED]: {
+    title: `Challenge expired`,
+    message: () => `Your two-factor challenge expired. Please sign in again.`,
+  },
+  [EAuthenticationErrorCodes.MFA_INVALID_CODE]: {
+    title: `Invalid code`,
+    message: () => `Invalid authentication code. Please try again.`,
+  },
+  [EAuthenticationErrorCodes.MFA_NOT_ENROLLED]: {
+    title: `Two-factor authentication not enabled`,
+    message: () => `No active two-factor authentication for this account.`,
+  },
 };
 
 export const authErrorHandler = (errorCode: EAuthenticationErrorCodes, email?: string): TAuthErrorInfo | undefined => {
@@ -425,6 +448,9 @@ export const authErrorHandler = (errorCode: EAuthenticationErrorCodes, email?: s
     EAuthenticationErrorCodes.ADMIN_USER_DEACTIVATED,
     EAuthenticationErrorCodes.RATE_LIMIT_EXCEEDED,
     EAuthenticationErrorCodes.PASSWORD_TOO_WEAK,
+    EAuthenticationErrorCodes.MFA_PENDING_EXPIRED,
+    EAuthenticationErrorCodes.MFA_INVALID_CODE,
+    EAuthenticationErrorCodes.MFA_NOT_ENROLLED,
   ];
 
   if (bannerAlertErrorCodes.includes(errorCode))

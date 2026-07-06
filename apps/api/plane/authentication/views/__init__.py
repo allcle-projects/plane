@@ -16,6 +16,14 @@ from .app.magic import MagicGenerateEndpoint, MagicSignInEndpoint, MagicSignUpEn
 
 from .app.signout import SignOutAuthEndpoint
 
+from .app.mfa import (
+    MFAEnrollEndpoint,
+    MFAConfirmEndpoint,
+    MFAVerifyEndpoint,
+    MFADisableEndpoint,
+    MFAAdminResetEndpoint,
+)
+
 
 from .space.email import SignInAuthSpaceEndpoint, SignUpAuthSpaceEndpoint
 

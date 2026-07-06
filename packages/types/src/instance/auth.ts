@@ -27,6 +27,7 @@ export type TInstanceAuthenticationModes = {
 
 export type TInstanceAuthenticationMethodKeys =
   | "ENABLE_SIGNUP"
+  | "ENABLE_MFA_ENFORCEMENT"
   | "ENABLE_MAGIC_LINK_LOGIN"
   | "ENABLE_EMAIL_PASSWORD"
   | "IS_GOOGLE_ENABLED"

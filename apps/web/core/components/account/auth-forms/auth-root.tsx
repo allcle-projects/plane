@@ -19,6 +19,7 @@ import {
   authErrorHandler,
 } from "@/helpers/authentication.helper";
 // hooks
+import { useAppRouter } from "@/hooks/use-app-router";
 import { useOAuthConfig } from "@/hooks/oauth";
 import { useInstance } from "@/hooks/store/use-instance";
 // local imports
@@ -33,12 +34,14 @@ type TAuthRoot = {
 
 export const AuthRoot = observer(function AuthRoot(props: TAuthRoot) {
   //router
+  const router = useAppRouter();
   const searchParams = useSearchParams();
   // query params
   const emailParam = searchParams.get("email");
   const invitation_id = searchParams.get("invitation_id");
   const workspaceSlug = searchParams.get("slug");
   const error_code = searchParams.get("error_code");
+  const nextPath = searchParams.get("next_path");
   // props
   const { authMode: currentAuthMode } = props;
   // states
@@ -57,6 +60,19 @@ export const AuthRoot = observer(function AuthRoot(props: TAuthRoot) {
   useEffect(() => {
     if (!authMode && currentAuthMode) setAuthMode(currentAuthMode);
   }, [currentAuthMode, authMode]);
+
+  // First factor succeeded but the account has a confirmed second factor: the
+  // backend marked the session half-authenticated and redirected here with
+  // MFA_REQUIRED. Forward to the /accounts/mfa challenge (no full session yet).
+  useEffect(() => {
+    if (error_code?.toString() === EAuthenticationErrorCodes.MFA_REQUIRED) {
+      const params = new URLSearchParams();
+      if (emailParam) params.set("email", emailParam.toString());
+      if (nextPath) params.set("next_path", nextPath.toString());
+      const query = params.toString();
+      router.push(`/accounts/mfa${query ? `?${query}` : ""}`);
+    }
+  }, [error_code, emailParam, nextPath, router]);
 
   useEffect(() => {
     if (error_code && authMode) {

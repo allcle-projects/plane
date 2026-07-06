@@ -91,6 +91,7 @@ class MagicSignInSpaceEndpoint(View):
         # Active User
         try:
             provider = MagicCodeProvider(request=request, key=f"magic_{email}", code=code)
+            provider.is_space = True
             user = provider.authenticate()
             # Login the user and record his device info
             user_login(request=request, user=user, is_space=True)
@@ -149,6 +150,7 @@ class MagicSignUpSpaceEndpoint(View):
 
         try:
             provider = MagicCodeProvider(request=request, key=f"magic_{email}", code=code)
+            provider.is_space = True
             user = provider.authenticate()
             # Login the user and record his device info
             user_login(request=request, user=user, is_space=True)

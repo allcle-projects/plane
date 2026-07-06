@@ -48,6 +48,12 @@ from .views import (
     GiteaOauthInitiateEndpoint,
     GiteaCallbackSpaceEndpoint,
     GiteaOauthInitiateSpaceEndpoint,
+    # MFA / Two-Factor Authentication
+    MFAEnrollEndpoint,
+    MFAConfirmEndpoint,
+    MFAVerifyEndpoint,
+    MFADisableEndpoint,
+    MFAAdminResetEndpoint,
 )
 
 urlpatterns = [
@@ -154,6 +160,12 @@ urlpatterns = [
     ),
     path("change-password/", ChangePasswordEndpoint.as_view(), name="forgot-password"),
     path("set-password/", SetUserPasswordEndpoint.as_view(), name="set-password"),
+    ## MFA / Two-Factor Authentication (TOTP)
+    path("mfa/enroll/", MFAEnrollEndpoint.as_view(), name="mfa-enroll"),
+    path("mfa/confirm/", MFAConfirmEndpoint.as_view(), name="mfa-confirm"),
+    path("mfa/verify/", MFAVerifyEndpoint.as_view(), name="mfa-verify"),
+    path("mfa/disable/", MFADisableEndpoint.as_view(), name="mfa-disable"),
+    path("mfa/admin/reset/", MFAAdminResetEndpoint.as_view(), name="mfa-admin-reset"),
     ## Gitea Oauth
     path("gitea/", GiteaOauthInitiateEndpoint.as_view(), name="gitea-initiate"),
     path("gitea/callback/", GiteaCallbackEndpoint.as_view(), name="gitea-callback"),

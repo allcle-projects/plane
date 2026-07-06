@@ -86,6 +86,7 @@ class OIDCCallbackSpaceEndpoint(View):
 
         try:
             provider = OIDCOAuthProvider(request=request, code=code)
+            provider.is_space = True
             user = provider.authenticate()
             # Login the user and record his device info
             user_login(request=request, user=user, is_space=True)

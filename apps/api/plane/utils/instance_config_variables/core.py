@@ -24,6 +24,14 @@ authentication_config_variables = [
         "category": "AUTHENTICATION",
         "is_encrypted": False,
     },
+    {
+        # Instance-wide "require 2FA for all users" toggle. Default OFF: when
+        # unset or "0", 2FA is strictly per-user opt-in and behavior is unchanged.
+        "key": "ENABLE_MFA_ENFORCEMENT",
+        "value": os.environ.get("ENABLE_MFA_ENFORCEMENT", "0"),
+        "category": "AUTHENTICATION",
+        "is_encrypted": False,
+    },
 ]
 
 workspace_management_config_variables = [

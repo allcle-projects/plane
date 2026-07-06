@@ -36,6 +36,7 @@ const InstanceAuthenticationPage = observer(function InstanceAuthenticationPage(
   const { fetchInstanceConfigurations, formattedConfig, updateInstanceConfigurations } = useInstance();
   // derived values
   const enableSignUpConfig = formattedConfig?.ENABLE_SIGNUP ?? "";
+  const enableMFAEnforcementConfig = formattedConfig?.ENABLE_MFA_ENFORCEMENT ?? "";
 
   useSWR("INSTANCE_CONFIGURATIONS", () => fetchInstanceConfigurations());
 
@@ -135,6 +136,32 @@ const InstanceAuthenticationPage = observer(function InstanceAuthenticationPage(
                       updateConfig("ENABLE_SIGNUP", "0");
                     } else {
                       updateConfig("ENABLE_SIGNUP", "1");
+                    }
+                  }}
+                  size="sm"
+                  disabled={isSubmitting}
+                />
+              </div>
+            </div>
+          </div>
+          <div className={cn("flex w-full items-center gap-14 rounded-sm")}>
+            <div className="flex grow items-center gap-4">
+              <div className="grow">
+                <div className="pb-1 text-16 font-medium">Require two-factor authentication for all users</div>
+                <div className={cn("text-11 leading-5 font-regular text-tertiary")}>
+                  When enabled, users without a confirmed second factor are forced to enroll on their next sign-in.
+                </div>
+              </div>
+            </div>
+            <div className={`shrink-0 pr-4 ${isSubmitting && "opacity-70"}`}>
+              <div className="flex items-center gap-4">
+                <ToggleSwitch
+                  value={Boolean(parseInt(enableMFAEnforcementConfig))}
+                  onChange={() => {
+                    if (Boolean(parseInt(enableMFAEnforcementConfig)) === true) {
+                      updateConfig("ENABLE_MFA_ENFORCEMENT", "0");
+                    } else {
+                      updateConfig("ENABLE_MFA_ENFORCEMENT", "1");
                     }
                   }}
                   size="sm"

@@ -22,7 +22,8 @@ from zxcvbn import zxcvbn
 from plane.bgtasks.user_activation_email_task import user_activation_email
 
 # Module imports
-from plane.db.models import FileAsset, Profile, User, WorkspaceMemberInvite
+from plane.db.models import FileAsset, Profile, User, UserMFA, WorkspaceMemberInvite
+from plane.authentication.utils.mfa import set_mfa_pending
 from plane.license.utils.instance_value import get_configuration_value
 from plane.settings.storage import S3Storage
 from plane.utils.exception_logger import log_exception
@@ -41,6 +42,11 @@ class Adapter:
         self.callback = callback
         self.token_data = None
         self.user_data = None
+        # Auth surface: True only for the published-spaces flow. The space views
+        # set this after construction. The MFA challenge is scoped to the app
+        # surface because only the app has an /mfa/verify/ route to consume the
+        # half-authenticated marker.
+        self.is_space = False
         self.logger = logging.getLogger("plane.authentication")
 
     def get_user_token(self, data, headers=None):
@@ -356,5 +362,34 @@ class Adapter:
         if self.token_data:
             self.create_update_account(user=user)
 
+        # Two-Factor Authentication gate — the single funnel for every provider.
+        # If this user has a confirmed, enabled second factor, we must NOT allow
+        # a full session to be minted here. The first factor has succeeded, so we
+        # mark the session as half-authenticated and raise so the calling view's
+        # `except AuthenticationException` branch redirects to the /mfa challenge
+        # (mirroring the existing error-redirect pattern). The full session is
+        # minted only after POST /auth/mfa/verify/ succeeds and calls user_login.
+        self.check_mfa_challenge(user=user)
+
         # Return user
         return user
+
+    def check_mfa_challenge(self, user):
+        """Raise MFA_REQUIRED (after marking the session half-authenticated) if
+        the user has a confirmed second factor. No-op for users without MFA, so
+        behavior is unchanged when 2FA is not enrolled."""
+        # Space surface has no /mfa/verify/ route to consume the pending marker,
+        # so gating there would permanently lock MFA users out of published
+        # pages. The challenge is app-surface only.
+        if getattr(self, "is_space", False):
+            return
+        mfa = UserMFA.objects.filter(user=user, is_enabled=True, confirmed_at__isnull=False).first()
+        if not mfa:
+            return
+        # Record the half-authenticated marker (first factor passed, no full session).
+        set_mfa_pending(request=self.request, user=user)
+        raise AuthenticationException(
+            error_code=AUTHENTICATION_ERROR_CODES["MFA_REQUIRED"],
+            error_message="MFA_REQUIRED",
+            payload={"email": user.email},
+        )

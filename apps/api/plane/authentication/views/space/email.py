@@ -89,6 +89,7 @@ class SignInAuthSpaceEndpoint(View):
 
         try:
             provider = EmailProvider(request=request, key=email, code=password, is_signup=False)
+            provider.is_space = True
             user = provider.authenticate()
             # Login the user and record his device info
             user_login(request=request, user=user, is_space=True)
@@ -173,6 +174,7 @@ class SignUpAuthSpaceEndpoint(View):
 
         try:
             provider = EmailProvider(request=request, key=email, code=password, is_signup=True)
+            provider.is_space = True
             user = provider.authenticate()
             # Login the user and record his device info
             user_login(request=request, user=user, is_space=True)
