@@ -925,12 +925,22 @@ class IssueDetailSerializer(IssueSerializer):
     description_html = serializers.CharField()
     is_subscribed = serializers.BooleanField(read_only=True)
     is_intake = serializers.BooleanField(read_only=True)
+    # Custom Fields Phase 2: {property_id: [values]} for one-round-trip reads.
+    # Requires prefetch_related("property_values", "property_values__property")
+    # on the serialized issue queryset to avoid N+1.
+    property_values = serializers.SerializerMethodField()
+
+    def get_property_values(self, obj):
+        from plane.utils.issue_property_values import serialize_property_values
+
+        return serialize_property_values(obj.property_values.all())
 
     class Meta(IssueSerializer.Meta):
         fields = IssueSerializer.Meta.fields + [
             "description_html",
             "is_subscribed",
             "is_intake",
+            "property_values",
         ]
         read_only_fields = fields
 

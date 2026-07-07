@@ -46,6 +46,8 @@ import { IssueSubscriptionStore } from "./subscription.store";
 import type { IIssueSubscriptionStore, IIssueSubscriptionStoreActions } from "./subscription.store";
 import { IssueWorklogStore } from "./worklog.store";
 import type { IIssueWorklogStore, IIssueWorklogStoreActions } from "./worklog.store";
+import { IssuePropertyValueStore } from "./property-value.store";
+import type { IIssuePropertyValueStore } from "./property-value.store";
 
 export type TPeekIssue = {
   workspaceSlug: string;
@@ -129,6 +131,7 @@ export interface IIssueDetail
   subscription: IIssueSubscriptionStore;
   relation: IIssueRelationStore;
   worklog: IIssueWorklogStore;
+  propertyValue: IIssuePropertyValueStore;
 }
 
 export abstract class IssueDetail implements IIssueDetail {
@@ -173,6 +176,7 @@ export abstract class IssueDetail implements IIssueDetail {
   comment: IIssueCommentStore;
   commentReaction: IIssueCommentReactionStore;
   worklog: IIssueWorklogStore;
+  propertyValue: IIssuePropertyValueStore;
 
   constructor(rootStore: IIssueRootStore, serviceType: TIssueServiceType) {
     makeObservable(this, {
@@ -226,6 +230,7 @@ export abstract class IssueDetail implements IIssueDetail {
     this.subscription = new IssueSubscriptionStore(this, serviceType);
     this.relation = new IssueRelationStore(this);
     this.worklog = new IssueWorklogStore(this);
+    this.propertyValue = new IssuePropertyValueStore(this);
   }
 
   // computed

@@ -52,6 +52,7 @@ from plane.db.models import (
     IssueAssignee,
     IssueLabel,
     IssueLink,
+    IssuePropertyValue,
     IssueReaction,
     IssueRelation,
     IssueSubscriber,
@@ -560,6 +561,14 @@ class IssueViewSet(BaseViewSet):
                 Prefetch(
                     "issue_link",
                     queryset=IssueLink.objects.select_related("created_by"),
+                )
+            )
+            # Custom Fields Phase 2: prefetch typed values + their definitions so
+            # IssueDetailSerializer.property_values serializes without N+1.
+            .prefetch_related(
+                Prefetch(
+                    "property_values",
+                    queryset=IssuePropertyValue.objects.select_related("property"),
                 )
             )
             .annotate(
@@ -1289,6 +1298,14 @@ class IssueDetailIdentifierEndpoint(BaseAPIView):
                 Prefetch(
                     "issue_link",
                     queryset=IssueLink.objects.select_related("created_by"),
+                )
+            )
+            # Custom Fields Phase 2: prefetch typed values + their definitions so
+            # IssueDetailSerializer.property_values serializes without N+1.
+            .prefetch_related(
+                Prefetch(
+                    "property_values",
+                    queryset=IssuePropertyValue.objects.select_related("property"),
                 )
             )
             .annotate(

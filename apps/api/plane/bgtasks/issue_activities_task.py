@@ -1159,6 +1159,118 @@ def delete_worklog_activity(
     )
 
 
+# Custom Fields / Work Item Properties — mote (Phase 2).
+# One activity row per changed property on a bulk value upsert.
+def _property_value_activity(
+    verb,
+    requested_data,
+    current_instance,
+    issue_id,
+    project_id,
+    workspace_id,
+    actor_id,
+    issue_activities,
+    epoch,
+):
+    requested_data = json.loads(requested_data) if requested_data is not None else None
+    current_instance = json.loads(current_instance) if current_instance is not None else None
+    if not requested_data:
+        return
+
+    old_values = (current_instance or {}).get("old_values") or []
+    new_values = requested_data.get("new_values") or []
+    comment_verb = {
+        "created": "set",
+        "updated": "updated",
+        "deleted": "cleared",
+    }.get(verb, "updated")
+
+    issue_activities.append(
+        IssueActivity(
+            issue_id=issue_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            comment=f"{comment_verb} the property {requested_data.get('property_name', '')}",
+            verb=verb,
+            actor_id=actor_id,
+            field="property_value",
+            old_value=", ".join(str(value) for value in old_values),
+            new_value=", ".join(str(value) for value in new_values),
+            new_identifier=requested_data.get("property_id"),
+            epoch=epoch,
+        )
+    )
+
+
+def create_property_value_activity(
+    requested_data,
+    current_instance,
+    issue_id,
+    project_id,
+    workspace_id,
+    actor_id,
+    issue_activities,
+    epoch,
+):
+    _property_value_activity(
+        "created",
+        requested_data,
+        current_instance,
+        issue_id,
+        project_id,
+        workspace_id,
+        actor_id,
+        issue_activities,
+        epoch,
+    )
+
+
+def update_property_value_activity(
+    requested_data,
+    current_instance,
+    issue_id,
+    project_id,
+    workspace_id,
+    actor_id,
+    issue_activities,
+    epoch,
+):
+    _property_value_activity(
+        "updated",
+        requested_data,
+        current_instance,
+        issue_id,
+        project_id,
+        workspace_id,
+        actor_id,
+        issue_activities,
+        epoch,
+    )
+
+
+def delete_property_value_activity(
+    requested_data,
+    current_instance,
+    issue_id,
+    project_id,
+    workspace_id,
+    actor_id,
+    issue_activities,
+    epoch,
+):
+    _property_value_activity(
+        "deleted",
+        requested_data,
+        current_instance,
+        issue_id,
+        project_id,
+        workspace_id,
+        actor_id,
+        issue_activities,
+        epoch,
+    )
+
+
 def create_issue_reaction_activity(
     requested_data,
     current_instance,
@@ -1648,6 +1760,9 @@ def issue_activity(
             "worklog.activity.created": create_worklog_activity,
             "worklog.activity.updated": update_worklog_activity,
             "worklog.activity.deleted": delete_worklog_activity,
+            "issue_property_value.activity.created": create_property_value_activity,
+            "issue_property_value.activity.updated": update_property_value_activity,
+            "issue_property_value.activity.deleted": delete_property_value_activity,
             "issue_relation.activity.created": create_issue_relation_activity,
             "issue_relation.activity.deleted": delete_issue_relation_activity,
             "issue_reaction.activity.created": create_issue_reaction_activity,

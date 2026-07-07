@@ -37,6 +37,8 @@ from .issue import (
 
 from .worklog import IssueWorklogListCreateAPIEndpoint
 
+from .property_value import IssuePropertyValueAPIEndpoint
+
 from .reaction import (
     IssueReactionListCreateAPIEndpoint,
     IssueReactionDetailAPIEndpoint,

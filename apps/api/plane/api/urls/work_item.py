@@ -18,6 +18,7 @@ from plane.api.views import (
     WorkspaceIssueAPIEndpoint,
     IssueSearchEndpoint,
     IssueWorklogListCreateAPIEndpoint,
+    IssuePropertyValueAPIEndpoint,
     IssueRelationListCreateAPIEndpoint,
     IssueRelationRemoveAPIEndpoint,
     SubIssuesListAPIEndpoint,
@@ -89,6 +90,11 @@ old_url_patterns = [
         "workspaces/<str:slug>/projects/<uuid:project_id>/issues/<uuid:issue_id>/worklogs/",
         IssueWorklogListCreateAPIEndpoint.as_view(http_method_names=["get", "post"]),
         name="worklog",
+    ),
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/issues/<uuid:issue_id>/property-values/",
+        IssuePropertyValueAPIEndpoint.as_view(http_method_names=["get", "patch"]),
+        name="issue-property-values",
     ),
 ]
 

@@ -34,6 +34,7 @@ from plane.app.views import (
     IssueWorklogViewSet,
     IssueTimerViewSet,
     ProjectWorklogSummaryEndpoint,
+    IssuePropertyValueEndpoint,
 )
 
 urlpatterns = [
@@ -320,4 +321,11 @@ urlpatterns = [
         name="project-worklogs-summary",
     ),
     ## End Worklogs
+    ## Custom field values (Work Item Properties — Phase 2)
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/issues/<uuid:issue_id>/property-values/",
+        IssuePropertyValueEndpoint.as_view(),
+        name="project-issue-property-values",
+    ),
+    ## End Custom field values
 ]
