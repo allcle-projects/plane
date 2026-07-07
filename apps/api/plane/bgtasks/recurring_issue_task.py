@@ -102,8 +102,13 @@ def create_recurring_issue(recurring_id):
 
     with transaction.atomic():
         try:
+            # Lock ONLY the recurring row (of=("self",)). `template` is a nullable
+            # FK → select_related emits a LEFT OUTER JOIN, and Postgres rejects
+            # `FOR UPDATE` on the nullable side of an outer join
+            # (NotSupportedError). Locking just self sidesteps that while still
+            # serialising concurrent ticks on this recurrence.
             recurring = (
-                RecurringIssue.objects.select_for_update()
+                RecurringIssue.objects.select_for_update(of=("self",))
                 .select_related("project", "template")
                 .get(pk=recurring_id)
             )
