@@ -36,6 +36,11 @@ app.conf.beat_schedule = {
         "task": "plane.license.bgtasks.tracer.instance_traces",
         "schedule": crontab(hour="*/6", minute=0),  # Every 6 hours
     },
+    # Fan out due recurring work items (mote — 03 §3.3).
+    "dispatch-recurring-work-items": {
+        "task": "plane.bgtasks.recurring_issue_task.dispatch_due_recurring_issues",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+    },
     # Occurs once every day
     "check-every-day-to-delete-hard-delete": {
         "task": "plane.bgtasks.deletion_task.hard_delete",

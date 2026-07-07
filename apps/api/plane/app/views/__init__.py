@@ -173,6 +173,11 @@ from .template import (
     TemplateInstantiateEndpoint,
 )
 
+from .recurring import (
+    RecurringIssueViewSet,
+    RecurringIssueRunEndpoint,
+)
+
 from .module.base import (
     ModuleViewSet,
     ModuleLinkViewSet,

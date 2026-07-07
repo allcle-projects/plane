@@ -6,6 +6,8 @@
 
 // store
 import { CoreRootStore } from "@/store/root.store";
+import type { IRecurringIssueStore } from "./recurring/recurring-issue.store";
+import { RecurringIssueStore } from "./recurring/recurring-issue.store";
 import type { ITemplateStore } from "./templates/template.store";
 import { TemplateStore } from "./templates/template.store";
 import type { ITimelineStore } from "./timeline";
@@ -14,11 +16,13 @@ import { TimeLineStore } from "./timeline";
 export class RootStore extends CoreRootStore {
   timelineStore: ITimelineStore;
   templateStore: ITemplateStore;
+  recurringIssueStore: IRecurringIssueStore;
 
   constructor() {
     super();
 
     this.timelineStore = new TimeLineStore(this);
     this.templateStore = new TemplateStore(this);
+    this.recurringIssueStore = new RecurringIssueStore(this);
   }
 }

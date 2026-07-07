@@ -12,6 +12,7 @@ from .intake import urlpatterns as intake_urls
 from .issue import urlpatterns as issue_urls
 from .issue_type import urlpatterns as issue_type_urls
 from .template import urlpatterns as template_urls
+from .recurring import urlpatterns as recurring_urls
 from .module import urlpatterns as module_urls
 from .notification import urlpatterns as notification_urls
 from .page import urlpatterns as page_urls
@@ -36,6 +37,7 @@ urlpatterns = [
     *issue_urls,
     *issue_type_urls,
     *template_urls,
+    *recurring_urls,
     *module_urls,
     *notification_urls,
     *page_urls,

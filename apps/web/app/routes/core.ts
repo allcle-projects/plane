@@ -369,6 +369,11 @@ export const coreRoutes: RouteConfigEntry[] = [
               ":workspaceSlug/settings/projects/:projectId/estimates",
               "./(all)/[workspaceSlug]/(settings)/settings/projects/[projectId]/estimates/page.tsx"
             ),
+            // Project Recurring work items (mote — Phase 2)
+            route(
+              ":workspaceSlug/settings/projects/:projectId/recurring",
+              "./(all)/[workspaceSlug]/(settings)/settings/projects/[projectId]/recurring/page.tsx"
+            ),
             // Project Automations
             layout("./(all)/[workspaceSlug]/(settings)/settings/projects/[projectId]/automations/layout.tsx", [
               route(

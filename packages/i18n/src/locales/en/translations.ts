@@ -1852,6 +1852,9 @@ export default {
         auto_close_status: "Auto-close status",
       },
     },
+    recurring: {
+      label: "Recurring",
+    },
     empty_state: {
       labels: {
         title: "No labels yet",

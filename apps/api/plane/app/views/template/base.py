@@ -16,7 +16,6 @@
 import json
 
 # Django imports
-from django.db import transaction
 from django.utils import timezone
 from django.core.serializers.json import DjangoJSONEncoder
 
@@ -30,20 +29,11 @@ from plane.app.permissions import allow_permission, ROLE
 from plane.app.serializers import TemplateSerializer, IssueCreateSerializer
 from plane.bgtasks.issue_activities_task import issue_activity
 from plane.utils.host import base_host
-from plane.utils.issue_property_values import (
-    PropertyValueError,
-    upsert_property_values,
-)
+from plane.utils.issue_instantiation import instantiate_issue_from_data
 from plane.db.models import (
     Workspace,
     Template,
     Project,
-    Issue,
-    IssueType,
-    State,
-    Label,
-    EstimatePoint,
-    ProjectMember,
 )
 
 
@@ -110,59 +100,6 @@ class TemplateInstantiateEndpoint(BaseAPIView):
     failing the whole instantiation.
     """
 
-    def _resolve_issue_payload(self, template_data, project_id, workspace_id):
-        data = {}
-        if template_data.get("name"):
-            data["name"] = template_data["name"]
-        if template_data.get("description_html"):
-            data["description_html"] = template_data["description_html"]
-        if template_data.get("priority"):
-            data["priority"] = template_data["priority"]
-
-        state_id = template_data.get("state_id")
-        if state_id and State.objects.filter(
-            project_id=project_id, pk=state_id
-        ).exists():
-            data["state_id"] = str(state_id)
-
-        # Work item types are workspace-scoped (shared across projects); a valid,
-        # active type in the workspace carries its property definitions.
-        type_id = template_data.get("type_id")
-        if type_id and IssueType.objects.filter(
-            workspace_id=workspace_id, pk=type_id, is_active=True
-        ).exists():
-            data["type"] = str(type_id)
-
-        estimate_point_id = template_data.get("estimate_point_id")
-        if estimate_point_id and EstimatePoint.objects.filter(
-            project_id=project_id, pk=estimate_point_id
-        ).exists():
-            data["estimate_point"] = str(estimate_point_id)
-
-        label_ids = template_data.get("label_ids") or []
-        if label_ids:
-            valid_labels = list(
-                Label.objects.filter(
-                    project_id=project_id, id__in=label_ids
-                ).values_list("id", flat=True)
-            )
-            if valid_labels:
-                data["label_ids"] = [str(x) for x in valid_labels]
-
-        assignee_ids = template_data.get("assignee_ids") or []
-        if assignee_ids:
-            valid_assignees = list(
-                ProjectMember.objects.filter(
-                    project_id=project_id,
-                    member_id__in=assignee_ids,
-                    is_active=True,
-                ).values_list("member_id", flat=True)
-            )
-            if valid_assignees:
-                data["assignee_ids"] = [str(x) for x in valid_assignees]
-
-        return data
-
     @allow_permission([ROLE.ADMIN, ROLE.MEMBER])
     def post(self, request, slug, project_id, template_id):
         template = Template.objects.get(
@@ -171,34 +108,13 @@ class TemplateInstantiateEndpoint(BaseAPIView):
         project = Project.objects.get(pk=project_id, workspace__slug=slug)
 
         template_data = template.template_data or {}
-        payload = self._resolve_issue_payload(
-            template_data, project_id, project.workspace_id
+        # Resolve + create the issue and write property values via the shared
+        # instantiation helper (reused by the recurring dispatcher, mote.15).
+        # User-triggered apply → the requesting user is the author (created_by);
+        # the recurring dispatcher passes actor_id=None for system creates.
+        issue, payload, property_changes = instantiate_issue_from_data(
+            template_data, project, actor_id=request.user.id
         )
-
-        serializer = IssueCreateSerializer(
-            data=payload,
-            context={
-                "project_id": str(project_id),
-                "workspace_id": str(project.workspace_id),
-                "default_assignee_id": project.default_assignee_id,
-            },
-        )
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        property_changes = []
-        with transaction.atomic():
-            serializer.save()
-            issue = Issue.objects.get(pk=serializer.data["id"])
-            property_values = template_data.get("property_values")
-            if issue.type_id is not None and property_values:
-                try:
-                    _, property_changes = upsert_property_values(
-                        issue, property_values
-                    )
-                except PropertyValueError:
-                    # Stale property/option references — drop, do not hard-fail.
-                    property_changes = []
 
         # Track the new issue.
         issue_activity.delay(
@@ -227,4 +143,6 @@ class TemplateInstantiateEndpoint(BaseAPIView):
                 origin=base_host(request=request, is_app=True),
             )
 
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(
+            IssueCreateSerializer(issue).data, status=status.HTTP_201_CREATED
+        )
