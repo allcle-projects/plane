@@ -102,3 +102,5 @@ from .description import Description, DescriptionVersion
 from .mfa import UserMFA, MFABackupCode
 
 from .worklog import IssueWorklog, IssueTimer
+
+from .template import Template

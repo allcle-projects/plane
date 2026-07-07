@@ -168,6 +168,11 @@ from .issue_type import (
     IssuePropertyOptionViewSet,
 )
 
+from .template import (
+    TemplateViewSet,
+    TemplateInstantiateEndpoint,
+)
+
 from .module.base import (
     ModuleViewSet,
     ModuleLinkViewSet,

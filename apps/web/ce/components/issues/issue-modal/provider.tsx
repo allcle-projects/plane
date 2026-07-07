@@ -24,6 +24,7 @@ import type {
   TActiveAdditionalPropertiesProps,
   TCreateUpdatePropertyValuesProps,
   THandleProjectEntitiesFetchProps,
+  THandleTemplateChangeProps,
   TPropertyValuesValidationProps,
 } from "@/components/issues/issue-modal/context";
 // hooks
@@ -33,8 +34,10 @@ import { useWorkItemTypes } from "@/hooks/store/use-work-item-types";
 import { IssuePropertyValueService } from "@/services/issue";
 // plane web imports
 import { validatePropertyValue } from "@/plane-web/components/issues/issue-properties";
+import { useTemplates } from "@/plane-web/hooks/store/use-templates";
 import type { IIssueProperty } from "@/plane-web/store/issue-types/issue-property";
 import type { TIssuePropertyValues, TIssuePropertyValueErrors } from "@/plane-web/types/issue-types";
+import type { TWorkItemTemplateData } from "@/plane-web/types/templates";
 
 export type TIssueModalProviderProps = {
   templateId?: string;
@@ -49,11 +52,14 @@ export const IssueModalProvider = observer(function IssueModalProvider(props: TI
   const [selectedParentIssue, setSelectedParentIssue] = useState<ISearchIssueResponse | null>(null);
   const [issuePropertyValues, setIssuePropertyValues] = useState<TIssuePropertyValues>({});
   const [issuePropertyValueErrors, setIssuePropertyValueErrors] = useState<TIssuePropertyValueErrors>({});
+  const [workItemTemplateId, setWorkItemTemplateId] = useState<string | null>(null);
+  const [isApplyingTemplate, setIsApplyingTemplate] = useState<boolean>(false);
   // router params
   const { workspaceSlug } = useParams();
   // store hooks
   const { projectsWithCreatePermissions } = useUser();
   const { getWorkItemTypeById, workItemTypeIds, fetchWorkItemTypes, fetchProperties } = useWorkItemTypes();
+  const { getTemplateById, fetchTemplateById } = useTemplates();
   // services
   const propertyValueService = useMemo(() => new IssuePropertyValueService(), []);
   // derived values
@@ -123,14 +129,31 @@ export const IssueModalProvider = observer(function IssueModalProvider(props: TI
     setIssuePropertyValueErrors({});
   };
 
+  // Syncs the description editor to the selected template. Field values +
+  // property values are applied by WorkItemTemplateSelect (which lives inside
+  // the form provider); this handler owns only the editor because the create
+  // modal passes the editor ref down through this context.
+  const handleTemplateChange = async (templateProps: THandleTemplateChangeProps): Promise<void> => {
+    const { workspaceSlug: slug, editorRef } = templateProps;
+    if (!workItemTemplateId || !slug) return;
+    setIsApplyingTemplate(true);
+    try {
+      const template = getTemplateById(workItemTemplateId) ?? (await fetchTemplateById(slug, workItemTemplateId));
+      const descriptionHtml = (template?.template_data as TWorkItemTemplateData | undefined)?.description_html;
+      editorRef.current?.setEditorValue(descriptionHtml ?? "<p></p>");
+    } finally {
+      setIsApplyingTemplate(false);
+    }
+  };
+
   return (
     <IssueModalContext.Provider
       value={{
         allowedProjectIds: allowedProjectIds ?? projectIdsWithCreatePermissions,
-        workItemTemplateId: null,
-        setWorkItemTemplateId: () => {},
-        isApplyingTemplate: false,
-        setIsApplyingTemplate: () => {},
+        workItemTemplateId,
+        setWorkItemTemplateId,
+        isApplyingTemplate,
+        setIsApplyingTemplate,
         selectedParentIssue,
         setSelectedParentIssue,
         issuePropertyValues,
@@ -142,7 +165,7 @@ export const IssueModalProvider = observer(function IssueModalProvider(props: TI
         handlePropertyValuesValidation,
         handleCreateUpdatePropertyValues,
         handleProjectEntitiesFetch,
-        handleTemplateChange: () => Promise.resolve(),
+        handleTemplateChange,
         handleConvert: () => Promise.resolve(),
         handleCreateSubWorkItem: () => Promise.resolve(),
       }}

@@ -145,3 +145,5 @@ from .issue_property import (
     IssuePropertyReadSerializer,
     IssuePropertyOptionSerializer,
 )
+
+from .template import TemplateSerializer
