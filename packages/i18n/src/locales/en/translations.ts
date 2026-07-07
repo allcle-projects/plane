@@ -1434,6 +1434,16 @@ export default {
       "Copy and save this secret key in Plane Pages. You can't see this key after you hit Close. A CSV file containing the key has been downloaded.",
     token_copied: "Token copied to clipboard.",
     settings: {
+      work_item_types: {
+        title: "Work item types",
+        heading: "Work item types",
+        description: "Define custom work item types and the properties that appear on them.",
+        add_type: "Add type",
+        add_property: "Add property",
+        add_option: "Add option",
+        empty_types: "No work item types yet. Create one to start adding custom properties.",
+        empty_properties: "No properties on this type yet.",
+      },
       general: {
         title: "General",
         upload_logo: "Upload logo",

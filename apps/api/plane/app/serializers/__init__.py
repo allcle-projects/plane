@@ -138,3 +138,10 @@ from .draft import (
 )
 
 from .worklog import IssueWorklogSerializer, IssueTimerSerializer
+
+from .issue_property import (
+    IssueTypeSerializer,
+    IssuePropertySerializer,
+    IssuePropertyReadSerializer,
+    IssuePropertyOptionSerializer,
+)

@@ -308,6 +308,11 @@ export const coreRoutes: RouteConfigEntry[] = [
             ":workspaceSlug/settings/webhooks/:webhookId",
             "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/webhooks/[webhookId]/page.tsx"
           ),
+          // Work item types (Custom Fields — mote, Phase 1)
+          route(
+            ":workspaceSlug/settings/work-item-types",
+            "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/work-item-types/page.tsx"
+          ),
         ]),
 
         // --------------------------------------------------------------------

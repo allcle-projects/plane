@@ -82,6 +82,13 @@ from .favorite import UserFavorite
 
 from .issue_type import IssueType
 
+from .issue_property import (
+    PropertyTypeEnum,
+    IssueProperty,
+    IssuePropertyOption,
+    IssuePropertyValue,
+)
+
 from .recent_visit import UserRecentVisit
 
 from .label import Label

@@ -31,6 +31,8 @@ import type { IEditorAssetStore } from "./editor/asset.store";
 import { EditorAssetStore } from "./editor/asset.store";
 import type { IProjectEstimateStore } from "./estimates/project-estimate.store";
 import { ProjectEstimateStore } from "./estimates/project-estimate.store";
+import type { IWorkItemTypeStore } from "./issue-types/work-item-type.store";
+import { WorkItemTypeStore } from "./issue-types/work-item-type.store";
 import type { IFavoriteStore } from "./favorite.store";
 import { FavoriteStore } from "./favorite.store";
 import type { IGlobalViewStore } from "./global-view.store";
@@ -100,6 +102,7 @@ export class CoreRootStore {
   user: IUserStore;
   projectInbox: IProjectInboxStore;
   projectEstimate: IProjectEstimateStore;
+  workItemType: IWorkItemTypeStore;
   multipleSelect: IMultipleSelectStore;
   workspaceNotification: IWorkspaceNotificationStore;
   favorite: IFavoriteStore;
@@ -133,6 +136,7 @@ export class CoreRootStore {
     this.workspacePages = new WorkspacePageStore(this as unknown as RootStore);
     this.pageComment = new PageCommentStore();
     this.projectEstimate = new ProjectEstimateStore(this);
+    this.workItemType = new WorkItemTypeStore(this);
     this.workspaceNotification = new WorkspaceNotificationStore(this);
     this.favorite = new FavoriteStore(this);
     this.stickyStore = new StickyStore();
@@ -169,6 +173,7 @@ export class CoreRootStore {
     this.pageComment = new PageCommentStore();
     this.multipleSelect = new MultipleSelectStore();
     this.projectEstimate = new ProjectEstimateStore(this);
+    this.workItemType = new WorkItemTypeStore(this);
     this.workspaceNotification = new WorkspaceNotificationStore(this);
     this.favorite = new FavoriteStore(this);
     this.stickyStore = new StickyStore();

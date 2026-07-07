@@ -160,6 +160,12 @@ from .issue.worklog import (
     ProjectWorklogSummaryEndpoint,
 )
 
+from .issue_type import (
+    IssueTypeViewSet,
+    IssuePropertyViewSet,
+    IssuePropertyOptionViewSet,
+)
+
 from .module.base import (
     ModuleViewSet,
     ModuleLinkViewSet,
