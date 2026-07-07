@@ -817,6 +817,11 @@ class IssueListDetailSerializer(serializers.Serializer):
         self.expand = kwargs.pop("expand", []) or []
         # Extract fields parameter and store it as instance variable
         self.fields = kwargs.pop("fields", []) or []
+        # Custom Fields Phase 3: visible custom-property column ids. When non-empty,
+        # ``property_values`` is included in the row payload. Requires the queryset to
+        # be prefetched with a filtered Prefetch("property_values", ...) on the same ids
+        # so this stays one extra query for the whole page (never N+1).
+        self.custom_property_ids = kwargs.pop("custom_property_ids", []) or []
         super().__init__(*args, **kwargs)
 
     def get_module_ids(self, obj):
@@ -858,6 +863,13 @@ class IssueListDetailSerializer(serializers.Serializer):
             "attachment_count": instance.attachment_count,
             "link_count": instance.link_count,
         }
+
+        # Custom Fields Phase 3: include property values only when the user has custom
+        # columns toggled on. Reads from the filtered prefetch cache (one query/page).
+        if self.custom_property_ids:
+            from plane.utils.issue_property_values import serialize_property_values
+
+            data["property_values"] = serialize_property_values(instance.property_values.all())
 
         # Handle expanded fields only when requested - using direct field access
         if self.expand:

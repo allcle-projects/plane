@@ -1072,6 +1072,26 @@ class IssueDetailEndpoint(BaseAPIView):
                     )
                 )
 
+        # Custom Fields Phase 3: when the user has custom-property columns toggled on
+        # for this project, thread their values into the list payload. Conditional +
+        # filtered to the visible property ids so it's exactly one extra query for the
+        # whole page (not N+1). When no custom columns are active, nothing changes.
+        display_properties = (
+            ProjectUserProperty.objects.filter(user=request.user, project_id=project_id)
+            .values_list("display_properties", flat=True)
+            .first()
+        )
+        custom_property_ids = (display_properties or {}).get("custom_properties") or []
+        if custom_property_ids:
+            issue = issue.prefetch_related(
+                Prefetch(
+                    "property_values",
+                    queryset=IssuePropertyValue.objects.filter(
+                        property_id__in=custom_property_ids
+                    ).select_related("property"),
+                )
+            )
+
         # Apply filtering from filterset
         issue = self.filter_queryset(issue)
 
@@ -1094,7 +1114,11 @@ class IssueDetailEndpoint(BaseAPIView):
             queryset=issue,
             total_count_queryset=total_issue_queryset,
             on_results=lambda issue: IssueListDetailSerializer(
-                issue, many=True, fields=self.fields, expand=self.expand
+                issue,
+                many=True,
+                fields=self.fields,
+                expand=self.expand,
+                custom_property_ids=custom_property_ids,
             ).data,
         )
 

@@ -175,6 +175,9 @@ export interface IIssueDisplayProperties {
   modules?: boolean;
   cycle?: boolean;
   issue_type?: boolean;
+  // Custom Fields Phase 3: ids of the custom properties the user has toggled on as
+  // list/spreadsheet columns. Round-trips through ProjectUserProperty.display_properties.
+  custom_properties?: string[];
 }
 
 export type TIssueKanbanFilters = {

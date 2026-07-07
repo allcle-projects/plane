@@ -33,6 +33,7 @@ import type { TSelectionHelper } from "@/hooks/use-multiple-select";
 import { usePlatformOS } from "@/hooks/use-platform-os";
 // plane web components
 import { IssueIdentifier } from "@/plane-web/components/issues/issue-details/issue-identifier";
+import { WorkItemSpreadsheetColumnCells } from "@/plane-web/components/issues/issue-layouts/spreadsheet-columns";
 // local components
 import type { TRenderQuickActions } from "../list/list-view-types";
 import { isIssueNew } from "../utils";
@@ -398,6 +399,12 @@ const IssueRowDetails = observer(function IssueRowDetails(props: IssueRowDetails
           isEstimateEnabled={isEstimateEnabled}
         />
       ))}
+      {/* Custom Fields Phase 3: custom-property cells (kept column-aligned with the header) */}
+      <WorkItemSpreadsheetColumnCells
+        displayProperties={displayProperties}
+        issue={issueDetail}
+        disabled={disableUserActions}
+      />
     </>
   );
 });

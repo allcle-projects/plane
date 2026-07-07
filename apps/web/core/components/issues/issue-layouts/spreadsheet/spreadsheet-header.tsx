@@ -15,6 +15,8 @@ import { cn } from "@plane/utils";
 import { MultipleSelectGroupAction } from "@/components/core/multiple-select";
 // hooks
 import type { TSelectionHelper } from "@/hooks/use-multiple-select";
+// plane web components
+import { WorkItemSpreadsheetColumnHeaders } from "@/plane-web/components/issues/issue-layouts/spreadsheet-columns";
 import { SpreadsheetHeaderColumn } from "./spreadsheet-header-column";
 
 interface Props {
@@ -87,6 +89,8 @@ export const SpreadsheetHeader = observer(function SpreadsheetHeader(props: Prop
             isEpic={isEpic}
           />
         ))}
+        {/* Custom Fields Phase 3: custom-property columns (toggled via display_properties.custom_properties) */}
+        <WorkItemSpreadsheetColumnHeaders displayProperties={displayProperties} />
       </tr>
     </thead>
   );

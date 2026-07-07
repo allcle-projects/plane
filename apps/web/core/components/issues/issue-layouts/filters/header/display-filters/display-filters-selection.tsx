@@ -21,6 +21,8 @@ import {
   FilterOrderBy,
   FilterSubGroupBy,
 } from "@/components/issues/issue-layouts/filters";
+// plane web components
+import { FilterCustomProperties } from "@/plane-web/components/issues/issue-layouts/filter-custom-properties";
 
 type Props = {
   displayFilters: IIssueDisplayFilterOptions | undefined;
@@ -70,6 +72,11 @@ export const DisplayFiltersSelection = observer(function DisplayFiltersSelection
             cycleViewDisabled={cycleViewDisabled}
             moduleViewDisabled={moduleViewDisabled}
             isEpic={isEpic}
+          />
+          {/* Custom Fields Phase 3: toggle custom-property columns (writes display_properties.custom_properties) */}
+          <FilterCustomProperties
+            displayProperties={displayProperties}
+            handleUpdate={handleDisplayPropertiesUpdate}
           />
         </div>
       )}

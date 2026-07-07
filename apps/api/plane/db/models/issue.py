@@ -87,6 +87,11 @@ def get_default_display_properties():
         "state": True,
         "sub_issue_count": True,
         "updated_on": True,
+        # Custom Fields Phase 3: visible custom-property columns for list/spreadsheet
+        # layouts. A list of IssueProperty ids the user has toggled on as columns.
+        # Round-trips through ProjectUserProperty.display_properties (JSONField) via
+        # the ProjectUserDisplayPropertyEndpoint (fields="__all__") without a migration.
+        "custom_properties": [],
     }
 
 
