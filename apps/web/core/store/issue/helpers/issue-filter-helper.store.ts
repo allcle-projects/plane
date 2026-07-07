@@ -27,7 +27,12 @@ import type {
 } from "@plane/types";
 import { EIssueLayoutTypes } from "@plane/types";
 // helpers
-import { getComputedDisplayFilters, getComputedDisplayProperties } from "@plane/utils";
+import {
+  extractCustomPropertyFilterParams,
+  getComputedDisplayFilters,
+  getComputedDisplayProperties,
+  MAX_CUSTOM_PROPERTY_FILTERS,
+} from "@plane/utils";
 // lib
 import { storage } from "@/lib/local-storage";
 import { getEnabledDisplayFilters } from "@/plane-web/store/issue/helpers/filter-utils";
@@ -114,8 +119,28 @@ export class IssueFilterHelperStore implements IIssueFilterHelperStore {
           : nonEmptyArrayValue;
     });
 
+    // Custom Fields — Phase 4 (mote.13): custom-property conditions are carried
+    // as `customproperty_<property_id>` keys inside `richFilters` (see
+    // packages/types/src/view-props.ts TWorkItemFilterProperty). They must NOT be
+    // sent inside `?filters=` — the rich-filter backend validates that JSON
+    // against a FilterSet allowlist and would 400 on an unrecognised field
+    // (apps/api/plane/utils/filters/filter_backend.py _validate_fields). Strip
+    // them out and re-emit as top-level `?property_<property_id>=` params, which
+    // is exactly what the backend's custom_property_filters expects
+    // (apps/api/plane/utils/issue_filters.py). Cap at
+    // MAX_CUSTOM_PROPERTY_FILTERS as a safety net mirroring the backend's own
+    // cap (the "Add filter" UI already prevents adding a 6th — see
+    // apps/web/ce/hooks/work-item-filters/use-work-item-filters-config.tsx).
+    const { cleanedExpression, customPropertyParams } = extractCustomPropertyFilterParams(richFilters);
+
     // work item filters
-    if (richFilters) issueFiltersParams.filters = JSON.stringify(richFilters);
+    if (cleanedExpression && !isEmpty(cleanedExpression)) issueFiltersParams.filters = JSON.stringify(cleanedExpression);
+
+    Object.entries(customPropertyParams)
+      .slice(0, MAX_CUSTOM_PROPERTY_FILTERS)
+      .forEach(([propertyId, value]) => {
+        (issueFiltersParams as Record<string, string | boolean>)[`property_${propertyId}`] = value;
+      });
 
     if (displayFilters?.layout) issueFiltersParams.layout = displayFilters?.layout;
 

@@ -5,11 +5,23 @@
 import re
 import uuid
 from datetime import timedelta
+from decimal import Decimal, InvalidOperation
 
+from django.db.models import Exists, OuterRef
 from django.utils import timezone
+from rest_framework.exceptions import ValidationError
 
 # The date from pattern
 pattern = re.compile(r"\d+_(weeks|months)$")
+
+# Custom Fields — Phase 4 (CF mote.13). See docs/mote-design/03-work-item-power.md §1.6.
+# ``?property_<property_id>=<value>`` filters compose with the built-in filters below
+# via AND, but are applied as correlated ``EXISTS`` subqueries (never row-multiplying
+# joins) — see ``custom_property_filters`` at the bottom of this module.
+CUSTOM_PROPERTY_FILTER_PREFIX = "property_"
+# Cap simultaneous custom-property filters to bound the number of correlated
+# subqueries a single list request can emit (top perf risk in the design register).
+MAX_CUSTOM_PROPERTY_FILTERS = 5
 
 
 # check the valid uuids
@@ -461,3 +473,146 @@ def issue_filters(query_params, method, prefix=""):
             func = value
             func(query_params, issue_filter, method, prefix)
     return issue_filter
+
+
+# ---------------------------------------------------------------------------
+# Custom Fields — Phase 4: property-value filtering (CF mote.13)
+# ---------------------------------------------------------------------------
+
+
+def _extract_filter_values(query_params, key, method):
+    """Normalise a single query param into a list of non-empty string values.
+
+    Mirrors the built-in filters above: GET requests carry comma-separated
+    strings, saved-view (POST/PATCH) blobs carry native lists.
+    """
+    if method == "GET":
+        raw = query_params.get(key, "")
+        return [item for item in raw.split(",") if item not in ("", "null")]
+    raw = query_params.get(key, None)
+    if raw is None:
+        return []
+    if isinstance(raw, (list, tuple)):
+        return [item for item in raw if item not in ("", "null")]
+    return [raw] if raw not in ("", "null") else []
+
+
+def _typed_value_lookup(issue_property, values):
+    """Map raw string values to the correct typed column of ``issue_property_values``.
+
+    Returns a ``{lookup: value}`` dict for ``IssuePropertyValue.objects.filter`` or
+    ``None`` when no usable value could be parsed (filter is then skipped).
+    """
+    property_type = issue_property.property_type
+
+    if property_type in ("SELECT", "MULTI_SELECT"):
+        option_ids = filter_valid_uuids(values)
+        return {"value_option_id__in": option_ids} if option_ids else None
+
+    if property_type == "MEMBER":
+        member_ids = filter_valid_uuids(values)
+        return {"value_uuid__in": member_ids} if member_ids else None
+
+    if property_type == "NUMBER":
+        decimals = []
+        for value in values:
+            try:
+                decimals.append(Decimal(value))
+            except (InvalidOperation, TypeError, ValueError):
+                pass
+        return {"value_decimal__in": decimals} if decimals else None
+
+    if property_type == "BOOLEAN":
+        booleans = set()
+        for value in values:
+            token = str(value).strip().lower()
+            if token in ("true", "1", "yes"):
+                booleans.add(True)
+            elif token in ("false", "0", "no"):
+                booleans.add(False)
+        return {"value_boolean__in": list(booleans)} if booleans else None
+
+    if property_type == "DATE":
+        return {"value_datetime__date__in": values} if values else None
+
+    # TEXT / URL and any future scalar text types
+    return {"value_text__in": values} if values else None
+
+
+def custom_property_filters(query_params, method="GET"):
+    """Build correlated ``EXISTS`` subqueries for ``?property_<id>=<value>`` filters.
+
+    Each custom-property filter becomes an ``Exists`` over ``issue_property_values``
+    anchored on ``issue=OuterRef("pk")`` — NOT a ``.filter()`` join. Joins against the
+    value table multiply issue rows (one per matching value) and degrade the list query
+    badly at scale; the EXISTS form is driven by the ``issue_prop_value_issue_idx``
+    ``(issue, property)`` composite index (P1, CF mote.10) and touches only the handful
+    of value rows for that issue+property, so no extra index is required.
+
+    Returns a list of ``Exists`` conditions that compose with the built-in filters via
+    AND at the call site::
+
+        qs = qs.filter(**issue_filters(params, "GET"))
+        qs = qs.filter(*custom_property_filters(params, "GET"))
+
+    Raises ``rest_framework.exceptions.ValidationError`` (HTTP 400) when more than
+    ``MAX_CUSTOM_PROPERTY_FILTERS`` custom-property filters are supplied at once, to
+    bound the number of subqueries a single request can emit.
+    """
+    # Local import avoids any import-time cycle between utils and db.models.
+    from plane.db.models import IssueProperty, IssuePropertyValue
+
+    # Collect {property_id: [values]} from every ?property_<id>= param.
+    requested = {}
+    for key in query_params:
+        if not key.startswith(CUSTOM_PROPERTY_FILTER_PREFIX):
+            continue
+        property_id = key[len(CUSTOM_PROPERTY_FILTER_PREFIX):]
+        if not property_id:
+            continue
+        values = _extract_filter_values(query_params, key, method)
+        if values:
+            requested[property_id] = values
+
+    if not requested:
+        return []
+
+    if len(requested) > MAX_CUSTOM_PROPERTY_FILTERS:
+        raise ValidationError(
+            f"A maximum of {MAX_CUSTOM_PROPERTY_FILTERS} custom property filters "
+            "can be applied at once."
+        )
+
+    valid_property_ids = filter_valid_uuids(list(requested.keys()))
+    if not valid_property_ids:
+        return []
+
+    # One query to resolve property definitions (property_type -> typed column).
+    property_map = {
+        str(prop.id): prop
+        for prop in IssueProperty.objects.filter(
+            id__in=valid_property_ids,
+            is_active=True,
+            deleted_at__isnull=True,
+        )
+    }
+
+    conditions = []
+    for property_id, values in requested.items():
+        issue_property = property_map.get(property_id)
+        if issue_property is None:
+            continue
+        typed_lookup = _typed_value_lookup(issue_property, values)
+        if typed_lookup is None:
+            continue
+        conditions.append(
+            Exists(
+                IssuePropertyValue.objects.filter(
+                    issue=OuterRef("pk"),
+                    property_id=issue_property.id,
+                    deleted_at__isnull=True,
+                    **typed_lookup,
+                )
+            )
+        )
+    return conditions

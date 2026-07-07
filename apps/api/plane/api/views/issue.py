@@ -85,6 +85,7 @@ from plane.utils.path_validator import sanitize_filename
 from plane.bgtasks.storage_metadata_task import get_asset_object_metadata
 from .base import BaseAPIView
 from plane.utils.host import base_host
+from plane.utils.issue_filters import custom_property_filters
 from plane.utils.issue_relation_mapper import get_actual_relation
 from plane.bgtasks.webhook_task import model_activity
 from plane.app.permissions import ROLE
@@ -357,6 +358,14 @@ class IssueListCreateAPIEndpoint(BaseAPIView):
         )
 
         total_issue_queryset = Issue.issue_objects.filter(project_id=project_id, workspace__slug=slug)
+
+        # Apply custom-property (custom field) filters as correlated EXISTS
+        # subqueries (CF Phase 4 public v1). Reuses the shared builder so public
+        # API filtering matches the internal list exactly.
+        custom_property_conditions = custom_property_filters(request.query_params, "GET")
+        if custom_property_conditions:
+            issue_queryset = issue_queryset.filter(*custom_property_conditions)
+            total_issue_queryset = total_issue_queryset.filter(*custom_property_conditions)
 
         # Priority Ordering
         if order_by_param == "priority" or order_by_param == "-priority":

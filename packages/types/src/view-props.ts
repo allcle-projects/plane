@@ -110,7 +110,16 @@ export const WORK_ITEM_FILTER_PROPERTY_KEYS = [
   "created_at",
   "updated_at",
 ] as const;
-export type TWorkItemFilterProperty = (typeof WORK_ITEM_FILTER_PROPERTY_KEYS)[number];
+// Custom Fields — Phase 4 (mote.13): custom-property filter conditions are carried
+// as dynamic `customproperty_<property_id>` keys inside the same rich-filter
+// expression (see the pre-existing `customproperty_` allowance in
+// packages/shared-state/src/store/work-item-filters/adapter.ts). This lets them
+// round-trip through the existing `rich_filters` persistence (ProjectUserProperty /
+// IssueView) with no new store fields. `computedFilteredParams`
+// (apps/web/core/store/issue/helpers/issue-filter-helper.store.ts) strips these
+// conditions out of the `?filters=` JSON and re-emits them as top-level
+// `?property_<property_id>=` params to match the backend contract exactly.
+export type TWorkItemFilterProperty = (typeof WORK_ITEM_FILTER_PROPERTY_KEYS)[number] | `customproperty_${string}`;
 
 export type TWorkItemFilterConditionKey = `${TWorkItemFilterProperty}__${TSupportedOperators}`;
 

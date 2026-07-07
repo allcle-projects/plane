@@ -4,8 +4,14 @@
  * See the LICENSE file for details.
  */
 
+import type { TFilterValue } from "../expression";
+import type { TTextInputFilterFieldConfig } from "../field-types";
+
 // ----------------------------- EXACT Operator -----------------------------
-export type TExtendedExactOperatorConfigs = never;
+// Custom Fields — Phase 4 (mote.13): TEXT / NUMBER / URL custom properties use
+// the EXACT operator with the extended TEXT_INPUT field type (see
+// ../field-types/extended.ts).
+export type TExtendedExactOperatorConfigs = TTextInputFilterFieldConfig<TFilterValue>;
 
 // ----------------------------- IN Operator -----------------------------
 export type TExtendedInOperatorConfigs = never;

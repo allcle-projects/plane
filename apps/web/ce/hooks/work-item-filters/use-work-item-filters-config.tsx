@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useMemo } from "react";
-import { AtSign, Briefcase } from "lucide-react";
+import { AtSign, Briefcase, SlidersHorizontal } from "lucide-react";
 // plane imports
 import { Logo } from "@plane/propel/emoji-icon-picker";
 import {
@@ -31,18 +31,23 @@ import type {
   IIssueLabel,
   IModule,
   IProject,
+  TWorkItemFilterExpression,
   TWorkItemFilterProperty,
 } from "@plane/types";
 import { Avatar } from "@plane/ui";
 import {
+  getActiveCustomPropertyFilterIds,
   getAssigneeFilterConfig,
   getCreatedAtFilterConfig,
   getCreatedByFilterConfig,
   getCycleFilterConfig,
+  getDatePropertyFilterConfig,
   getFileURL,
   getLabelFilterConfig,
+  getMemberPickerPropertyFilterConfig,
   getMentionFilterConfig,
   getModuleFilterConfig,
+  getOptionPickerPropertyFilterConfig,
   getPriorityFilterConfig,
   getProjectFilterConfig,
   getStartDateFilterConfig,
@@ -50,8 +55,10 @@ import {
   getStateGroupFilterConfig,
   getSubscriberFilterConfig,
   getTargetDateFilterConfig,
+  getTextInputPropertyFilterConfig,
   getUpdatedAtFilterConfig,
   isLoaderReady,
+  MAX_CUSTOM_PROPERTY_FILTERS,
 } from "@plane/utils";
 // store hooks
 import { useCycle } from "@/hooks/store/use-cycle";
@@ -61,7 +68,16 @@ import { useModule } from "@/hooks/store/use-module";
 import { useProject } from "@/hooks/store/use-project";
 import { useProjectState } from "@/hooks/store/use-project-state";
 // plane web imports
+import { useCustomPropertyColumns } from "@/plane-web/components/issues/issue-layouts/use-custom-property-columns";
 import { useFiltersOperatorConfigs } from "@/plane-web/hooks/rich-filters/use-filters-operator-configs";
+import type { IIssueProperty } from "@/plane-web/store/issue-types/issue-property";
+import { EIssuePropertyType } from "@/plane-web/types/issue-types";
+
+// Custom Fields — Phase 4 (mote.13): prefix for the dynamic filter keys carrying
+// custom-property conditions inside the rich-filter expression (see
+// packages/types/src/view-props.ts TWorkItemFilterProperty and the matching
+// allowance in packages/shared-state/src/store/work-item-filters/adapter.ts).
+const CUSTOM_PROPERTY_FILTER_KEY_PREFIX = "customproperty_";
 
 export type TWorkItemFiltersEntityProps = {
   workspaceSlug: string;
@@ -72,6 +88,11 @@ export type TWorkItemFiltersEntityProps = {
   projectId?: string;
   projectIds?: string[];
   stateIds?: string[];
+  // Custom Fields — Phase 4: the currently-active rich-filter expression, used
+  // only to count how many distinct custom-property filters are already applied
+  // so the 5-filter cap can disable adding a 6th. Forwarded from
+  // core/components/work-item-filters/filters-hoc/base.tsx.
+  activeRichFilters?: TWorkItemFilterExpression;
 };
 
 export type TUseWorkItemFiltersConfigProps = {
@@ -89,8 +110,18 @@ export type TWorkItemFiltersConfig = {
 };
 
 export const useWorkItemFiltersConfig = (props: TUseWorkItemFiltersConfigProps): TWorkItemFiltersConfig => {
-  const { allowedFilters, cycleIds, labelIds, memberIds, moduleIds, projectId, projectIds, stateIds, workspaceSlug } =
-    props;
+  const {
+    allowedFilters,
+    activeRichFilters,
+    cycleIds,
+    labelIds,
+    memberIds,
+    moduleIds,
+    projectId,
+    projectIds,
+    stateIds,
+    workspaceSlug,
+  } = props;
   // store hooks
   const { loader: projectLoader, getProjectById } = useProject();
   const { getCycleById } = useCycle();
@@ -98,6 +129,8 @@ export const useWorkItemFiltersConfig = (props: TUseWorkItemFiltersConfigProps):
   const { getModuleById } = useModule();
   const { getStateById } = useProjectState();
   const { getUserDetails } = useMember();
+  // Custom Fields — Phase 4: active custom-property definitions (all P1-3 stores/hooks)
+  const { activeProperties } = useCustomPropertyColumns();
   // derived values
   const operatorConfigs = useFiltersOperatorConfigs({ workspaceSlug });
   const filtersToShow = useMemo(() => new Set(allowedFilters), [allowedFilters]);
@@ -362,6 +395,101 @@ export const useWorkItemFiltersConfig = (props: TUseWorkItemFiltersConfigProps):
     [isFilterEnabled, projects, operatorConfigs]
   );
 
+  // Custom Fields — Phase 4 (mote.13): one filter config per active custom
+  // property, keyed as `customproperty_<property_id>` (see the module-level
+  // CUSTOM_PROPERTY_FILTER_KEY_PREFIX comment above). Distinct active property
+  // ids already applied as filters count toward the 5-filter cap; properties
+  // not yet added are disabled once the cap is reached (mirrors the backend's
+  // MAX_CUSTOM_PROPERTY_FILTERS in apps/api/plane/utils/issue_filters.py).
+  const activeCustomPropertyFilterIds = useMemo(
+    () => getActiveCustomPropertyFilterIds(activeRichFilters),
+    [activeRichFilters]
+  );
+
+  const buildCustomPropertyFilterConfig = useCallback(
+    (property: IIssueProperty): TFilterConfig<TWorkItemFilterProperty> | undefined => {
+      const key = `${CUSTOM_PROPERTY_FILTER_KEY_PREFIX}${property.id}` as TWorkItemFilterProperty;
+      const isUnderCap =
+        activeCustomPropertyFilterIds.has(property.id) || activeCustomPropertyFilterIds.size < MAX_CUSTOM_PROPERTY_FILTERS;
+      const isEnabled = isUnderCap;
+
+      switch (property.property_type) {
+        case EIssuePropertyType.SELECT:
+        case EIssuePropertyType.MULTI_SELECT:
+          return getOptionPickerPropertyFilterConfig<TWorkItemFilterProperty, string>(key)({
+            isEnabled,
+            propertyDisplayName: property.display_name,
+            filterIcon: SlidersHorizontal,
+            options: property.optionIds
+              .map((optionId) => property.optionById(optionId))
+              .filter((option): option is NonNullable<typeof option> => !!option && option.is_active)
+              .map((option) => ({ id: option.id, label: option.name, value: option.id })),
+            ...operatorConfigs,
+          });
+        case EIssuePropertyType.MEMBER:
+          return getMemberPickerPropertyFilterConfig<TWorkItemFilterProperty>(key)({
+            isEnabled,
+            propertyDisplayName: property.display_name,
+            filterIcon: SlidersHorizontal,
+            members: members ?? [],
+            getOptionIcon: (memberDetails) => (
+              <Avatar
+                name={memberDetails.display_name}
+                src={getFileURL(memberDetails.avatar_url)}
+                showTooltip={false}
+                size="sm"
+              />
+            ),
+            ...operatorConfigs,
+          });
+        case EIssuePropertyType.BOOLEAN:
+          return getOptionPickerPropertyFilterConfig<TWorkItemFilterProperty, string>(key)({
+            isEnabled,
+            propertyDisplayName: property.display_name,
+            filterIcon: SlidersHorizontal,
+            options: [
+              { id: "true", label: "Yes", value: "true" },
+              { id: "false", label: "No", value: "false" },
+            ],
+            ...operatorConfigs,
+          });
+        case EIssuePropertyType.DATE:
+          return getDatePropertyFilterConfig<TWorkItemFilterProperty>(key)({
+            isEnabled,
+            propertyDisplayName: property.display_name,
+            filterIcon: SlidersHorizontal,
+            ...operatorConfigs,
+          });
+        case EIssuePropertyType.TEXT:
+        case EIssuePropertyType.NUMBER:
+        case EIssuePropertyType.URL:
+          return getTextInputPropertyFilterConfig<TWorkItemFilterProperty>(key)({
+            isEnabled,
+            propertyDisplayName: property.display_name,
+            filterIcon: SlidersHorizontal,
+            inputMode:
+              property.property_type === EIssuePropertyType.NUMBER
+                ? "number"
+                : property.property_type === EIssuePropertyType.URL
+                  ? "url"
+                  : "text",
+            ...operatorConfigs,
+          });
+        default:
+          return undefined;
+      }
+    },
+    [activeCustomPropertyFilterIds, members, operatorConfigs]
+  );
+
+  const customPropertyFilterConfigs = useMemo(
+    () =>
+      activeProperties
+        .map((property) => buildCustomPropertyFilterConfig(property))
+        .filter((config): config is TFilterConfig<TWorkItemFilterProperty> => !!config),
+    [activeProperties, buildCustomPropertyFilterConfig]
+  );
+
   return {
     areAllConfigsInitialized,
     configs: [
@@ -380,6 +508,7 @@ export const useWorkItemFiltersConfig = (props: TUseWorkItemFiltersConfigProps):
       updatedAtFilterConfig,
       createdByFilterConfig,
       subscriberFilterConfig,
+      ...customPropertyFilterConfigs,
     ],
     configMap: {
       project_id: projectFilterConfig,
@@ -397,6 +526,7 @@ export const useWorkItemFiltersConfig = (props: TUseWorkItemFiltersConfigProps):
       target_date: targetDateFilterConfig,
       created_at: createdAtFilterConfig,
       updated_at: updatedAtFilterConfig,
+      ...Object.fromEntries(customPropertyFilterConfigs.map((config) => [config.id, config])),
     },
     isFilterEnabled,
     members: members ?? [],

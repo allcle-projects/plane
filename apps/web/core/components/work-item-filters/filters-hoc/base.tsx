@@ -71,6 +71,9 @@ const WorkItemFilterRoot = observer(function WorkItemFilterRoot(props: TWorkItem
   const initialUserFilters = useMemo(() => initialWorkItemFilters.richFilters, [initialWorkItemFilters]);
   const workItemFiltersConfig = useWorkItemFiltersConfig({
     allowedFilters: filtersToShowByLayout ? filtersToShowByLayout : [],
+    // Custom Fields — Phase 4: forwarded so the CE filter config hook can count
+    // already-active custom-property filters and enforce the 5-filter cap.
+    activeRichFilters: initialUserFilters,
     ...entityConfigProps,
   });
   // get or create filter instance

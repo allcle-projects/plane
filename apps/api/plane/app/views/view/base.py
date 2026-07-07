@@ -40,7 +40,7 @@ from plane.db.models import (
     IssueLabel,
     ModuleIssue,
 )
-from plane.utils.issue_filters import issue_filters
+from plane.utils.issue_filters import custom_property_filters, issue_filters
 from plane.utils.order_queryset import order_issue_queryset
 from plane.bgtasks.recent_visited_task import recent_visited_task
 from .. import BaseViewSet
@@ -225,6 +225,13 @@ class WorkspaceViewIssuesViewSet(BaseViewSet):
         # Apply legacy filters
         filters = issue_filters(request.query_params, "GET")
         issue_queryset = issue_queryset.filter(**filters)
+
+        # Apply custom-property (custom field) filters as correlated EXISTS
+        # subqueries (CF Phase 4). Saved views re-send their filter blob as query
+        # params, so custom-property filters stored in IssueView.filters flow here.
+        custom_property_conditions = custom_property_filters(request.query_params, "GET")
+        if custom_property_conditions:
+            issue_queryset = issue_queryset.filter(*custom_property_conditions)
 
         # Get common project permission filters
         permission_filters = self._get_project_permission_filters()
