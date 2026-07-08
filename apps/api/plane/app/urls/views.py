@@ -10,6 +10,7 @@ from plane.app.views import (
     WorkspaceViewViewSet,
     WorkspaceViewIssuesViewSet,
     IssueViewFavoriteViewSet,
+    ViewDeployBoardViewSet,
 )
 
 
@@ -62,5 +63,15 @@ urlpatterns = [
         "workspaces/<str:slug>/projects/<uuid:project_id>/user-favorite-views/<uuid:view_id>/",
         IssueViewFavoriteViewSet.as_view({"delete": "destroy"}),
         name="user-favorite-view",
+    ),
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/views/<uuid:view_id>/view-deploy-boards/",
+        ViewDeployBoardViewSet.as_view({"get": "list", "post": "create"}),
+        name="view-deploy-board",
+    ),
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/views/<uuid:view_id>/view-deploy-boards/<uuid:pk>/",
+        ViewDeployBoardViewSet.as_view({"get": "retrieve", "delete": "destroy"}),
+        name="view-deploy-board",
     ),
 ]
