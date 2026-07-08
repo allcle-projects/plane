@@ -185,6 +185,15 @@ from .initiative import (
     InitiativeAnalyticsEndpoint,
 )
 
+from .update import (
+    ProjectUpdateEndpoint,
+    ProjectUpdateDetailEndpoint,
+    CycleUpdateEndpoint,
+    CycleUpdateDetailEndpoint,
+    InitiativeUpdateEndpoint,
+    InitiativeUpdateDetailEndpoint,
+)
+
 from .module.base import (
     ModuleViewSet,
     ModuleLinkViewSet,

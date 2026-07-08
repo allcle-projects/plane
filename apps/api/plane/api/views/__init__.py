@@ -87,6 +87,11 @@ from .initiative import (
     InitiativeDetailAPIEndpoint,
 )
 
+from .update import (
+    ProjectUpdateListCreateAPIEndpoint,
+    ProjectUpdateDetailAPIEndpoint,
+)
+
 from .module import (
     ModuleListCreateAPIEndpoint,
     ModuleDetailAPIEndpoint,

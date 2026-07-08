@@ -155,3 +155,5 @@ from .initiative import (
     InitiativeProjectSerializer,
     InitiativeEpicSerializer,
 )
+
+from .update import EntityUpdateSerializer

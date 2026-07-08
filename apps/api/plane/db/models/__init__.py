@@ -108,3 +108,5 @@ from .template import Template
 from .recurring import RecurringIssue, RecurringIssueRun
 
 from .initiative import Initiative, InitiativeProject, InitiativeEpic
+
+from .update import EntityUpdate, UpdateStatus
