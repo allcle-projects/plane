@@ -7,7 +7,7 @@
 import type { IProject, IProjectLite } from "./project";
 import type { IWorkspaceLite } from "./workspace";
 
-export type TPublishEntityType = "project" | "page";
+export type TPublishEntityType = "project" | "page" | "view";
 
 export type TProjectPublishLayouts = "calendar" | "gantt" | "kanban" | "list" | "spreadsheet";
 
@@ -41,5 +41,11 @@ export type TPublishSettings = {
 };
 
 export type TProjectPublishSettings = TPublishSettings & {
+  view_props: TProjectPublishViewProps | undefined;
+};
+
+// View publishing — mote (docs/mote-design/02-wiki-publishing.md, Feature 5). Parallel to
+// TProjectPublishSettings: same DeployBoard shape, entity_name="view" instead of "project".
+export type TViewPublishSettings = TPublishSettings & {
   view_props: TProjectPublishViewProps | undefined;
 };

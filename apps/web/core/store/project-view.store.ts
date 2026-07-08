@@ -4,15 +4,16 @@
  * See the LICENSE file for details.
  */
 
-import { set } from "lodash-es";
+import { set, unset } from "lodash-es";
 import { observable, action, makeObservable, runInAction, computed } from "mobx";
 import { computedFn } from "mobx-utils";
 // types
-import type { IProjectView, TViewFilters } from "@plane/types";
+import type { IProjectView, TViewFilters, TViewPublishSettings } from "@plane/types";
 // constants
 // helpers
 import { getValidatedViewFilters, getViewName, orderViews, shouldFilterView } from "@plane/utils";
 // services
+import { ViewPublishService } from "@/services/view-publish.service";
 import { ViewService } from "@/services/view.service";
 // store
 import type { CoreRootStore } from "./root.store";
@@ -24,12 +25,17 @@ export interface IProjectViewStore {
   // observables
   viewMap: Record<string, IProjectView>;
   filters: TViewFilters;
+  // view publish — mote (docs/mote-design/02-wiki-publishing.md, Feature 5)
+  viewPublishGeneralLoader: boolean;
+  viewPublishFetchLoader: boolean;
+  viewPublishSettingsMap: Record<string, TViewPublishSettings>;
   // computed
   projectViewIds: string[] | null;
   // computed actions
   getProjectViews: (projectId: string) => IProjectView[] | undefined;
   getFilteredProjectViews: (projectId: string) => IProjectView[] | undefined;
   getViewById: (viewId: string) => IProjectView;
+  getViewPublishSettings: (viewId: string) => TViewPublishSettings | undefined;
   // fetch actions
   fetchViews: (workspaceSlug: string, projectId: string) => Promise<undefined | IProjectView[]>;
   fetchViewDetails: (workspaceSlug: string, projectId: string, viewId: string) => Promise<IProjectView>;
@@ -47,6 +53,19 @@ export interface IProjectViewStore {
   // favorites actions
   addViewToFavorites: (workspaceSlug: string, projectId: string, viewId: string) => Promise<any>;
   removeViewFromFavorites: (workspaceSlug: string, projectId: string, viewId: string) => Promise<any>;
+  // view publish actions — mote (docs/mote-design/02-wiki-publishing.md, Feature 5)
+  fetchViewPublishSettings: (
+    workspaceSlug: string,
+    projectId: string,
+    viewId: string
+  ) => Promise<TViewPublishSettings>;
+  publishView: (
+    workspaceSlug: string,
+    projectId: string,
+    viewId: string,
+    data: Partial<TViewPublishSettings>
+  ) => Promise<TViewPublishSettings>;
+  unpublishView: (workspaceSlug: string, projectId: string, viewId: string, viewPublishId: string) => Promise<void>;
 }
 
 export class ProjectViewStore implements IProjectViewStore {
@@ -56,10 +75,15 @@ export class ProjectViewStore implements IProjectViewStore {
   //loaders
   fetchedMap: Record<string, boolean> = {};
   filters: TViewFilters = { searchQuery: "", sortBy: "desc", sortKey: "updated_at" };
+  // view publish — mote (docs/mote-design/02-wiki-publishing.md, Feature 5)
+  viewPublishGeneralLoader: boolean = false;
+  viewPublishFetchLoader: boolean = false;
+  viewPublishSettingsMap: Record<string, TViewPublishSettings> = {};
   // root store
   rootStore;
   // services
   viewService;
+  viewPublishService;
 
   constructor(_rootStore: CoreRootStore) {
     makeObservable(this, {
@@ -68,6 +92,9 @@ export class ProjectViewStore implements IProjectViewStore {
       viewMap: observable,
       fetchedMap: observable,
       filters: observable,
+      viewPublishGeneralLoader: observable.ref,
+      viewPublishFetchLoader: observable.ref,
+      viewPublishSettingsMap: observable,
       // computed
       projectViewIds: computed,
       // fetch actions
@@ -83,11 +110,16 @@ export class ProjectViewStore implements IProjectViewStore {
       // favorites actions
       addViewToFavorites: action,
       removeViewFromFavorites: action,
+      // view publish actions
+      fetchViewPublishSettings: action,
+      publishView: action,
+      unpublishView: action,
     });
     // root store
     this.rootStore = _rootStore;
     // services
     this.viewService = new ViewService();
+    this.viewPublishService = new ViewPublishService();
 
     this.createView = this.createView.bind(this);
     this.updateView = this.updateView.bind(this);
@@ -136,6 +168,15 @@ export class ProjectViewStore implements IProjectViewStore {
    * Returns view details by id
    */
   getViewById = computedFn((viewId: string) => this.viewMap?.[viewId] ?? null);
+
+  /**
+   * @description returns the publish settings of a particular view — mote
+   * (docs/mote-design/02-wiki-publishing.md, Feature 5)
+   * @param {string} viewId
+   * @returns {TViewPublishSettings | undefined}
+   */
+  getViewPublishSettings = (viewId: string): TViewPublishSettings | undefined =>
+    this.viewPublishSettingsMap?.[viewId] ?? undefined;
 
   /**
    * Updates the filter
@@ -302,6 +343,94 @@ export class ProjectViewStore implements IProjectViewStore {
       runInAction(() => {
         set(this.viewMap, [viewId, "is_favorite"], true);
       });
+    }
+  };
+
+  /**
+   * Fetches publish settings for a specific view — mote (docs/mote-design/02-wiki-publishing.md,
+   * Feature 5)
+   * @param workspaceSlug
+   * @param projectId
+   * @param viewId
+   * @returns
+   */
+  fetchViewPublishSettings = async (workspaceSlug: string, projectId: string, viewId: string) => {
+    try {
+      runInAction(() => {
+        this.viewPublishFetchLoader = true;
+      });
+      const response = await this.viewPublishService.fetchPublishSettings(workspaceSlug, projectId, viewId);
+      runInAction(() => {
+        set(this.viewPublishSettingsMap, [viewId], response);
+        this.viewPublishFetchLoader = false;
+      });
+      return response;
+    } catch (error) {
+      runInAction(() => {
+        this.viewPublishFetchLoader = false;
+      });
+      throw error;
+    }
+  };
+
+  /**
+   * Publishes a view (or updates its publish settings — the backend upserts by
+   * [entity_name, entity_identifier]) and updates the view's anchor in the store
+   * @param workspaceSlug
+   * @param projectId
+   * @param viewId
+   * @param data
+   * @returns
+   */
+  publishView = async (
+    workspaceSlug: string,
+    projectId: string,
+    viewId: string,
+    data: Partial<TViewPublishSettings>
+  ) => {
+    try {
+      runInAction(() => {
+        this.viewPublishGeneralLoader = true;
+      });
+      const response = await this.viewPublishService.publishView(workspaceSlug, projectId, viewId, data);
+      runInAction(() => {
+        set(this.viewPublishSettingsMap, [viewId], response);
+        set(this.viewMap, [viewId, "anchor"], response.anchor);
+        this.viewPublishGeneralLoader = false;
+      });
+      return response;
+    } catch (error) {
+      runInAction(() => {
+        this.viewPublishGeneralLoader = false;
+      });
+      throw error;
+    }
+  };
+
+  /**
+   * Unpublishes a view and clears its publish settings + anchor from the store
+   * @param workspaceSlug
+   * @param projectId
+   * @param viewId
+   * @param viewPublishId
+   * @returns
+   */
+  unpublishView = async (workspaceSlug: string, projectId: string, viewId: string, viewPublishId: string) => {
+    try {
+      runInAction(() => {
+        this.viewPublishGeneralLoader = true;
+      });
+      await this.viewPublishService.unpublishView(workspaceSlug, projectId, viewId, viewPublishId);
+      runInAction(() => {
+        unset(this.viewPublishSettingsMap, [viewId]);
+        set(this.viewMap, [viewId, "anchor"], undefined);
+        this.viewPublishGeneralLoader = false;
+      });
+    } catch (error) {
+      runInAction(() => {
+        this.viewPublishGeneralLoader = false;
+      });
+      throw error;
     }
   };
 }
