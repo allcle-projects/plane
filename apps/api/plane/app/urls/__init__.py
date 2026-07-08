@@ -16,6 +16,7 @@ from .recurring import urlpatterns as recurring_urls
 from .automation import urlpatterns as automation_urls
 from .initiative import urlpatterns as initiative_urls
 from .team import urlpatterns as team_urls
+from .role import urlpatterns as role_urls
 from .milestone import urlpatterns as milestone_urls
 from .update import urlpatterns as update_urls
 from .module import urlpatterns as module_urls
@@ -47,6 +48,7 @@ urlpatterns = [
     *automation_urls,
     *initiative_urls,
     *team_urls,
+    *role_urls,
     *milestone_urls,
     *update_urls,
     *module_urls,

@@ -167,6 +167,12 @@ from .team import (
     TeamProjectSerializer,
 )
 
+from .role import (
+    PermissionSerializer,
+    RoleSerializer,
+    RoleAssignmentSerializer,
+)
+
 from .milestone import (
     MilestoneSerializer,
     MilestoneIssueSerializer,

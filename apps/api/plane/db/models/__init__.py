@@ -122,6 +122,8 @@ from .recurring import RecurringIssue, RecurringIssueRun
 
 from .initiative import Initiative, InitiativeProject, InitiativeEpic
 
+from .role import Permission, Role, RoleAssignment
+
 from .milestone import Milestone, MilestoneIssue
 
 from .project_state import ProjectState, ProjectStateGroup, DEFAULT_PROJECT_STATES

@@ -19,3 +19,4 @@ from .project import (
 )
 from .base import allow_permission, ROLE
 from .page import ProjectPagePermission, WorkspacePagePermission
+from .resolver import has_permission, get_permissions

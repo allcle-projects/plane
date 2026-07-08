@@ -88,6 +88,11 @@ from .workspace.team import (
     TeamProjectEndpoint,
     TeamWorkItemsEndpoint,
 )
+from .workspace.role import (
+    RoleViewSet,
+    PermissionCatalogEndpoint,
+    MemberRoleAssignmentEndpoint,
+)
 
 from .state.base import StateViewSet, IntakeStateEndpoint
 from .view.base import (

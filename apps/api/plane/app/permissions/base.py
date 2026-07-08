@@ -16,10 +16,27 @@ class ROLE(Enum):
     GUEST = 5
 
 
-def allow_permission(allowed_roles, level="PROJECT", creator=False, model=None):
+def allow_permission(allowed_roles, level="PROJECT", creator=False, model=None, permission_key=None):
+    # ``permission_key`` (mote — Custom RBAC, design 05 §2) is an ADDITIVE opt-in:
+    # when set, access is ALSO granted if the custom-role resolver grants that
+    # permission in scope. It defaults to None, so every existing call site keeps
+    # its exact int-role behavior — this widens access, never narrows it.
     def decorator(view_func):
         @wraps(view_func)
         def _wrapped_view(instance, request, *args, **kwargs):
+            # Custom-role grant (additive; only when a gate opts in via permission_key)
+            if permission_key:
+                # Local import avoids a circular import at module load.
+                from plane.app.permissions.resolver import has_permission as _has_perm
+
+                if _has_perm(
+                    request.user,
+                    kwargs.get("slug"),
+                    permission_key,
+                    project_id=kwargs.get("project_id"),
+                ):
+                    return view_func(instance, request, *args, **kwargs)
+
             # Check for creator if required
             if creator and model:
                 # check if the user is part of the workspace or not
