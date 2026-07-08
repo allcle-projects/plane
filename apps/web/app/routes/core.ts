@@ -147,6 +147,15 @@ export const coreRoutes: RouteConfigEntry[] = [
           route(":workspaceSlug/projects", "./(all)/[workspaceSlug]/(projects)/projects/(list)/page.tsx"),
         ]),
 
+        // Initiatives (mote — Phase 3) - List
+        route(":workspaceSlug/initiatives", "./(all)/[workspaceSlug]/(projects)/initiatives/(list)/page.tsx"),
+
+        // Initiatives (mote — Phase 3) - Detail
+        route(
+          ":workspaceSlug/initiatives/:initiativeId",
+          "./(all)/[workspaceSlug]/(projects)/initiatives/(detail)/[initiativeId]/page.tsx"
+        ),
+
         // Project Detail
         layout("./(all)/[workspaceSlug]/(projects)/projects/(detail)/[projectId]/layout.tsx", [
           // Project Overview
