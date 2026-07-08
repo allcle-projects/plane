@@ -1793,6 +1793,50 @@ def issue_activity(
         # Save all the values to database
         issue_activities_created = IssueActivity.objects.bulk_create(issue_activities)
 
+        # Automations dispatch — mote. See
+        # docs/mote-design/06-integrations-importers-automations.md, Feature 3.
+        # Derive the triggers fired by this batch and hand off to the rule
+        # engine. Local import avoids a circular import with automation_task
+        # (which itself calls back into issue_activity to re-emit activity for
+        # automation-driven mutations).
+        from plane.bgtasks.automation_task import evaluate_automations
+
+        FIELD_TRIGGER_MAP = {
+            "state": "issue.state.changed",
+            "priority": "issue.priority.changed",
+            "assignees": "issue.assignee.changed",
+            "assignee": "issue.assignee.changed",
+            "labels": "issue.label.added",
+            "label": "issue.label.added",
+        }
+        automation_triggers = set()
+        if type == "issue.activity.created":
+            automation_triggers.add("issue.created")
+        for created_activity in issue_activities_created:
+            trigger = FIELD_TRIGGER_MAP.get(getattr(created_activity, "field", None))
+            if trigger:
+                automation_triggers.add(trigger)
+
+        if automation_triggers and issue_id is not None:
+            automation_requested_data = requested_data
+            if isinstance(automation_requested_data, str):
+                try:
+                    automation_requested_data = json.loads(automation_requested_data)
+                except (TypeError, ValueError):
+                    automation_requested_data = None
+            is_automation = bool(
+                isinstance(automation_requested_data, dict)
+                and automation_requested_data.get("automation") is True
+            )
+
+            evaluate_automations.delay(
+                issue_id=issue_id,
+                project_id=project_id,
+                actor_id=actor_id,
+                triggers=list(automation_triggers),
+                is_automation=is_automation,
+            )
+
         if notification:
             notifications.delay(
                 type=type,

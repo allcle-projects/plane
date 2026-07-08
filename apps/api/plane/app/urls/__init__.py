@@ -13,6 +13,7 @@ from .issue import urlpatterns as issue_urls
 from .issue_type import urlpatterns as issue_type_urls
 from .template import urlpatterns as template_urls
 from .recurring import urlpatterns as recurring_urls
+from .automation import urlpatterns as automation_urls
 from .initiative import urlpatterns as initiative_urls
 from .milestone import urlpatterns as milestone_urls
 from .update import urlpatterns as update_urls
@@ -42,6 +43,7 @@ urlpatterns = [
     *issue_type_urls,
     *template_urls,
     *recurring_urls,
+    *automation_urls,
     *initiative_urls,
     *milestone_urls,
     *update_urls,

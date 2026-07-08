@@ -179,6 +179,8 @@ from .recurring import (
     RecurringIssueRunEndpoint,
 )
 
+from .automation import AutomationRuleViewSet
+
 from .initiative import (
     InitiativeViewSet,
     InitiativeProjectEndpoint,

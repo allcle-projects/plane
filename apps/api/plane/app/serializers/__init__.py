@@ -153,6 +153,8 @@ from .template import TemplateSerializer
 
 from .recurring import RecurringIssueSerializer, RecurringIssueRunSerializer
 
+from .automation import AutomationRuleSerializer, AutomationRuleLogSerializer
+
 from .initiative import (
     InitiativeSerializer,
     InitiativeProjectSerializer,
