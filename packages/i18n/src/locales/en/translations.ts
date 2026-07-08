@@ -2778,4 +2778,20 @@ export default {
   enter_number_of_projects: "Enter number of projects",
   pin: "Pin",
   unpin: "Unpin",
+  // Page Collections — mote (docs/mote-design/02-wiki-publishing.md, Feature 4)
+  page_collections: {
+    title: "Collections",
+    new_collection: "New collection",
+    create_placeholder: "Collection name",
+    empty: "No collections yet",
+    no_pages: "No pages yet",
+    rename: "Rename",
+    delete: "Delete",
+    delete_confirmation: "Delete this collection? Pages inside it will not be deleted.",
+    toast: {
+      create_error: "Collection could not be created. Please try again.",
+      rename_error: "Collection could not be renamed. Please try again.",
+      delete_error: "Collection could not be deleted. Please try again.",
+    },
+  },
 } as const;

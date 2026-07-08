@@ -2673,4 +2673,20 @@ export default {
     close_button: "네비게이션 패널 닫기",
     outline_floating_button: "개요 열기",
   },
+  // Page Collections — mote (docs/mote-design/02-wiki-publishing.md, Feature 4)
+  page_collections: {
+    title: "컬렉션",
+    new_collection: "새 컬렉션",
+    create_placeholder: "컬렉션 이름",
+    empty: "아직 컬렉션이 없습니다",
+    no_pages: "아직 페이지가 없습니다",
+    rename: "이름 변경",
+    delete: "삭제",
+    delete_confirmation: "이 컬렉션을 삭제하시겠습니까? 컬렉션에 포함된 페이지는 삭제되지 않습니다.",
+    toast: {
+      create_error: "컬렉션을 생성하지 못했습니다. 다시 시도해 주세요.",
+      rename_error: "컬렉션 이름을 변경하지 못했습니다. 다시 시도해 주세요.",
+      delete_error: "컬렉션을 삭제하지 못했습니다. 다시 시도해 주세요.",
+    },
+  },
 } as const;

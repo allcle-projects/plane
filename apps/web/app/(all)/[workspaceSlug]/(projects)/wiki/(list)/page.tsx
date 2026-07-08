@@ -10,6 +10,7 @@ import { useSearchParams } from "next/navigation";
 import type { TPageNavigationTabs } from "@plane/types";
 // components
 import { PageHead } from "@/components/core/page-title";
+import { PageCollectionsRoot } from "@/components/pages/collections/collections-root";
 import { PagesListRoot } from "@/components/pages/list/root";
 import { PagesListView } from "@/components/pages/pages-list-view";
 // plane web hooks
@@ -33,9 +34,19 @@ function WorkspaceWikiPage({ params }: Route.ComponentProps) {
   return (
     <>
       <PageHead title="Wiki" />
-      <PagesListView pageType={pageType} projectId="" storeType={EPageStoreType.WORKSPACE} workspaceSlug={workspaceSlug}>
-        <PagesListRoot pageType={pageType} storeType={EPageStoreType.WORKSPACE} />
-      </PagesListView>
+      <div className="flex h-full w-full overflow-hidden">
+        <PageCollectionsRoot />
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <PagesListView
+            pageType={pageType}
+            projectId=""
+            storeType={EPageStoreType.WORKSPACE}
+            workspaceSlug={workspaceSlug}
+          >
+            <PagesListRoot pageType={pageType} storeType={EPageStoreType.WORKSPACE} />
+          </PagesListView>
+        </div>
+      </div>
     </>
   );
 }
