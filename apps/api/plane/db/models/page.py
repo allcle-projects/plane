@@ -234,3 +234,33 @@ class PageVersion(BaseModel):
             else strip_tags(self.description_html)
         )
         super(PageVersion, self).save(*args, **kwargs)
+
+
+class PageCollaborator(BaseModel):
+    VIEWER_ROLE = 5
+    MEMBER_ROLE = 15
+    ADMIN_ROLE = 20
+
+    ROLE_CHOICES = ((VIEWER_ROLE, "VIEWER"), (MEMBER_ROLE, "MEMBER"), (ADMIN_ROLE, "ADMIN"))
+
+    workspace = models.ForeignKey("db.Workspace", on_delete=models.CASCADE, related_name="page_collaborators")
+    page = models.ForeignKey("db.Page", on_delete=models.CASCADE, related_name="collaborators")
+    member = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="shared_pages")
+    role = models.PositiveSmallIntegerField(choices=ROLE_CHOICES, default=VIEWER_ROLE)
+
+    class Meta:
+        unique_together = ["page", "member", "deleted_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["page", "member"],
+                condition=models.Q(deleted_at__isnull=True),
+                name="page_collaborator_unique_page_member_when_deleted_at_null",
+            )
+        ]
+        verbose_name = "Page Collaborator"
+        verbose_name_plural = "Page Collaborators"
+        db_table = "page_collaborators"
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        return f"{self.page_id} {self.member_id}"

@@ -25,6 +25,7 @@ from plane.db.models import (
     PageCommentReaction,
     PageCollection,
     PageCollectionItem,
+    PageCollaborator,
 )
 
 
@@ -230,6 +231,26 @@ class PageCollectionItemSerializer(BaseSerializer):
             "updated_by",
         ]
         read_only_fields = ["workspace", "collection", "deleted_at"]
+
+
+class PageCollaboratorSerializer(BaseSerializer):
+    member_detail = UserLiteSerializer(source="member", read_only=True)
+
+    class Meta:
+        model = PageCollaborator
+        fields = [
+            "id",
+            "page",
+            "member",
+            "member_detail",
+            "role",
+            "workspace",
+            "created_at",
+            "updated_at",
+            "created_by",
+            "updated_by",
+        ]
+        read_only_fields = ["workspace", "page", "deleted_at"]
 
 
 class PageCommentReactionSerializer(BaseSerializer):

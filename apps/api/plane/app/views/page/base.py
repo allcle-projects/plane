@@ -38,6 +38,7 @@ from plane.app.serializers import (
 )
 from plane.db.models import (
     Page,
+    PageCollaborator,
     PageLog,
     UserFavorite,
     ProjectMember,
@@ -133,7 +134,11 @@ class PageViewSet(BaseViewSet):
 
         queryset = (
             queryset.filter(parent__isnull=True)
-            .filter(Q(owned_by=self.request.user) | Q(access=0))
+            .filter(
+                Q(owned_by=self.request.user)
+                | Q(access=0)
+                | Q(collaborators__member=self.request.user, collaborators__deleted_at__isnull=True)
+            )
             .prefetch_related("projects")
             .select_related("workspace")
             .select_related("owned_by")
@@ -435,7 +440,11 @@ class PageViewSet(BaseViewSet):
                 projects__archived_at__isnull=True,
             )
             .filter(parent__isnull=True)
-            .filter(Q(owned_by=request.user) | Q(access=0))
+            .filter(
+                Q(owned_by=request.user)
+                | Q(access=0)
+                | Q(collaborators__member=request.user, collaborators__deleted_at__isnull=True)
+            )
             .annotate(
                 project=Exists(
                     ProjectPage.objects.filter(page_id=OuterRef("id"), project_id=self.kwargs.get("project_id"))
@@ -513,20 +522,44 @@ class PagesDescriptionViewSet(BaseViewSet):
         return [WorkspacePagePermission()]
 
     def _get_page(self, slug, project_id, page_id):
-        if project_id:
-            return Page.objects.get(
-                Q(owned_by=self.request.user) | Q(access=0),
-                pk=page_id,
-                workspace__slug=slug,
-                projects__id=project_id,
-                project_pages__deleted_at__isnull=True,
-            )
-        return Page.objects.get(
-            Q(owned_by=self.request.user) | Q(access=0),
-            pk=page_id,
-            workspace__slug=slug,
-            is_global=True,
+        # Read visibility: owner, public pages, or any shared collaborator.
+        visibility = (
+            Q(owned_by=self.request.user)
+            | Q(access=0)
+            | Q(collaborators__member=self.request.user, collaborators__deleted_at__isnull=True)
         )
+        if project_id:
+            return (
+                Page.objects.filter(
+                    pk=page_id,
+                    workspace__slug=slug,
+                    projects__id=project_id,
+                    project_pages__deleted_at__isnull=True,
+                )
+                .filter(visibility)
+                .distinct()
+                .get()
+            )
+        return (
+            Page.objects.filter(pk=page_id, workspace__slug=slug, is_global=True)
+            .filter(visibility)
+            .distinct()
+            .get()
+        )
+
+    def _can_edit_content(self, request, page):
+        # Owner and public pages keep their existing implicit edit allowance;
+        # a private page additionally allows a collaborator with role >= MEMBER.
+        if page.owned_by_id == request.user.id:
+            return True
+        if page.access == 0:
+            return True
+        return PageCollaborator.objects.filter(
+            page_id=page.id,
+            member=request.user,
+            role__gte=15,
+            deleted_at__isnull=True,
+        ).exists()
 
     def retrieve(self, request, slug, page_id, project_id=None):
         page = self._get_page(slug, project_id, page_id)
@@ -544,6 +577,12 @@ class PagesDescriptionViewSet(BaseViewSet):
 
     def partial_update(self, request, slug, page_id, project_id=None):
         page = self._get_page(slug, project_id, page_id)
+
+        if not self._can_edit_content(request, page):
+            return Response(
+                {"error": "You do not have permission to edit this page"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         if page.is_locked:
             return Response(

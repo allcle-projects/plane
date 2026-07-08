@@ -14,6 +14,7 @@ from plane.app.views import (
     PageCommentViewSet,
     PageCommentReactionViewSet,
     PageCollectionViewSet,
+    PageCollaboratorViewSet,
 )
 
 urlpatterns = [
@@ -162,5 +163,16 @@ urlpatterns = [
         "workspaces/<str:slug>/page-collections/<uuid:collection_id>/pages/<uuid:page_id>/",
         PageCollectionViewSet.as_view({"delete": "remove_page"}),
         name="page-collection-pages",
+    ),
+    # Shared pages (page collaborators)
+    path(
+        "workspaces/<str:slug>/pages/<uuid:page_id>/collaborators/",
+        PageCollaboratorViewSet.as_view({"get": "list", "post": "create"}),
+        name="page-collaborators",
+    ),
+    path(
+        "workspaces/<str:slug>/pages/<uuid:page_id>/collaborators/<uuid:member_id>/",
+        PageCollaboratorViewSet.as_view({"patch": "partial_update", "delete": "destroy"}),
+        name="page-collaborators",
     ),
 ]

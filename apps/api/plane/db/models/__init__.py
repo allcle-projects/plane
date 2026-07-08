@@ -56,6 +56,7 @@ from .page import (
     PageVersion,
     PageCollection,
     PageCollectionItem,
+    PageCollaborator,
 )
 from .page_comment import PageComment, PageCommentReaction
 from .project import (

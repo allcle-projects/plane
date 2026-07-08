@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # See the LICENSE file for details.
 
-from plane.db.models import ProjectMember, Page, WorkspaceMember
+from plane.db.models import PageCollaborator, ProjectMember, Page, WorkspaceMember
 from plane.app.permissions import ROLE
 
 
@@ -80,9 +80,25 @@ class ProjectPagePermission(BasePermission):
     def _has_private_page_action_access(self, request, slug, page, project_id):
         """
         Check access to private pages. Override for feature flag logic.
+
+        Base implementation: only the owner can access private pages, unless
+        the page has been explicitly shared with the requesting user via
+        PageCollaborator. A shared collaborator may use any safe (read)
+        method; a MEMBER-role-or-above collaborator may also use mutating
+        methods (e.g. PATCH to edit content).
         """
-        # Base implementation: only owner can access private pages
-        return False
+        collaborator_role = (
+            PageCollaborator.objects.filter(
+                page_id=page.id, member=request.user, deleted_at__isnull=True
+            )
+            .values_list("role", flat=True)
+            .first()
+        )
+        if collaborator_role is None:
+            return False
+        if request.method in SAFE_METHODS:
+            return True
+        return collaborator_role >= MEMBER
 
     def _check_project_action_access(self, request, role):
         method = request.method
