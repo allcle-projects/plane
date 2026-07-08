@@ -28,6 +28,7 @@ import { PageHead } from "@/components/core/page-title";
 import { useMember } from "@/hooks/store/use-member";
 import { useProject } from "@/hooks/store/use-project";
 // plane web imports
+import { UpdatesPanel } from "@/plane-web/components/updates";
 import { useInitiatives } from "@/plane-web/hooks/store/use-initiatives";
 import type { TInitiativeProgressSnapshot } from "@/plane-web/types/initiatives";
 // local imports
@@ -207,6 +208,9 @@ export const InitiativeDetailRoot = observer(function InitiativeDetailRoot() {
             </div>
           )}
         </div>
+
+        {/* Updates */}
+        <UpdatesPanel entityType="initiative" workspaceSlug={slug} initiativeId={id} />
       </div>
 
       <InitiativeModal

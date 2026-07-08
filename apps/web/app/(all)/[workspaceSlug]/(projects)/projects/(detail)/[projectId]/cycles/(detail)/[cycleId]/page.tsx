@@ -20,6 +20,8 @@ import { useCycle } from "@/hooks/store/use-cycle";
 import { useProject } from "@/hooks/store/use-project";
 import { useAppRouter } from "@/hooks/use-app-router";
 import useLocalStorage from "@/hooks/use-local-storage";
+// plane web imports
+import { UpdatesPanel } from "@/plane-web/components/updates";
 import type { Route } from "./+types/page";
 
 function CycleDetailPage({ params }: Route.ComponentProps) {
@@ -81,6 +83,14 @@ function CycleDetailPage({ params }: Route.ComponentProps) {
                   projectId={projectId}
                   workspaceSlug={workspaceSlug}
                 />
+                {cycle && (
+                  <UpdatesPanel
+                    entityType="cycle"
+                    workspaceSlug={workspaceSlug}
+                    projectId={projectId}
+                    cycleId={cycleId}
+                  />
+                )}
               </div>
             )}
           </div>

@@ -11,9 +11,11 @@ import { ProjectModuleOverview } from "@/components/analytics/overview/project-m
 import { PageHead } from "@/components/core/page-title";
 // hooks
 import { useProject } from "@/hooks/store/use-project";
+// plane web imports
+import { UpdatesPanel } from "@/plane-web/components/updates";
 
 function ProjectOverviewPage() {
-  const { projectId } = useParams();
+  const { workspaceSlug, projectId } = useParams();
   // store hooks
   const { getProjectById } = useProject();
   // derived values
@@ -27,6 +29,13 @@ function ProjectOverviewPage() {
       <PageHead title={pageTitle} />
       <div className="h-full w-full overflow-y-auto">
         <ProjectModuleOverview projectId={projectId.toString()} />
+        <div className="mx-auto w-full max-w-5xl px-6 pb-10">
+          <UpdatesPanel
+            entityType="project"
+            workspaceSlug={workspaceSlug!.toString()}
+            projectId={projectId.toString()}
+          />
+        </div>
       </div>
     </>
   );

@@ -14,12 +14,15 @@ import type { ITemplateStore } from "./templates/template.store";
 import { TemplateStore } from "./templates/template.store";
 import type { ITimelineStore } from "./timeline";
 import { TimeLineStore } from "./timeline";
+import type { IUpdateStore } from "./update/update.store";
+import { UpdateStore } from "./update/update.store";
 
 export class RootStore extends CoreRootStore {
   timelineStore: ITimelineStore;
   templateStore: ITemplateStore;
   recurringIssueStore: IRecurringIssueStore;
   initiativeStore: IInitiativeStore;
+  updateStore: IUpdateStore;
 
   constructor() {
     super();
@@ -28,5 +31,6 @@ export class RootStore extends CoreRootStore {
     this.templateStore = new TemplateStore(this);
     this.recurringIssueStore = new RecurringIssueStore(this);
     this.initiativeStore = new InitiativeStore(this);
+    this.updateStore = new UpdateStore(this);
   }
 }
