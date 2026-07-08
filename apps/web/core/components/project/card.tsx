@@ -19,13 +19,15 @@ import { setPromiseToast, setToast, TOAST_TYPE } from "@plane/propel/toast";
 import { Tooltip } from "@plane/propel/tooltip";
 import type { IProject } from "@plane/types";
 import type { TContextMenuItem } from "@plane/ui";
-import { Avatar, AvatarGroup, ContextMenu, FavoriteStar } from "@plane/ui";
+import { Avatar, AvatarGroup, ContextMenu, CustomMenu, FavoriteStar } from "@plane/ui";
 import { copyUrlToClipboard, cn, getFileURL, renderFormattedDate } from "@plane/utils";
 // components
 // hooks
 import { useMember } from "@/hooks/store/use-member";
 import { useProject } from "@/hooks/store/use-project";
 import { useUserPermissions } from "@/hooks/store/user";
+// plane web hooks — Project States (mote, docs/mote-design/04-planning-hierarchy.md §3)
+import { useWorkspaceProjectStates } from "@/plane-web/hooks/store/use-workspace-project-states";
 import { useAppRouter } from "@/hooks/use-app-router";
 import { usePlatformOS } from "@/hooks/use-platform-os";
 // local imports
@@ -51,8 +53,10 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
   const { workspaceSlug } = useParams();
   // store hooks
   const { getUserDetails } = useMember();
-  const { addProjectToFavorites, removeProjectFromFavorites } = useProject();
+  const { addProjectToFavorites, removeProjectFromFavorites, updateProject } = useProject();
   const { allowPermissions } = useUserPermissions();
+  // Project States (mote) — resolve this project's status + selectable options.
+  const { getProjectStateById, getProjectStatesForWorkspace } = useWorkspaceProjectStates();
   // hooks
   const { isMobile } = usePlatformOS();
   // derived values
@@ -67,6 +71,21 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
   const hasMemberRole = project.member_role === EUserPermissions.MEMBER;
   // archive
   const isArchived = !!project.archived_at;
+  // Project States (mote) — current status badge + change permission/options.
+  const currentProjectState = project.state ? getProjectStateById(project.state) : undefined;
+  const workspaceProjectStates = workspaceSlug ? getProjectStatesForWorkspace(workspaceSlug.toString()) : [];
+  const canChangeState = isMemberOfProject && (hasAdminRole || hasMemberRole) && !isArchived;
+
+  const handleChangeState = (stateId: string) => {
+    if (!workspaceSlug) return;
+    updateProject(workspaceSlug.toString(), project.id, { state: stateId }).catch(() => {
+      setToast({
+        type: TOAST_TYPE.ERROR,
+        title: "Error!",
+        message: "Couldn't update the project status. Please try again.",
+      });
+    });
+  };
   // local storage
   const { setValue: toggleFavoriteMenu, storedValue: isFavoriteMenuOpen } = useLocalStorage<boolean>(
     IS_FAVORITE_MENU_OPEN,
@@ -302,6 +321,56 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
                   <span className="text-13 text-placeholder italic">No Member Yet</span>
                 )}
               </Tooltip>
+              {/* Project State badge + change dropdown (mote, §3) */}
+              {(currentProjectState || (canChangeState && workspaceProjectStates.length > 0)) && (
+                <div
+                  data-prevent-progress
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                >
+                  {canChangeState && workspaceProjectStates.length > 0 ? (
+                    <CustomMenu
+                      customButton={
+                        <div className="flex items-center gap-1.5 rounded-sm bg-surface-2 px-2 py-1 text-11 text-secondary hover:text-primary">
+                          <span
+                            className="h-2 w-2 flex-shrink-0 rounded-full"
+                            style={{ backgroundColor: currentProjectState?.color ?? "#60646C" }}
+                          />
+                          <span className="truncate">{currentProjectState?.name ?? "No status"}</span>
+                        </div>
+                      }
+                      placement="bottom-start"
+                      closeOnSelect
+                    >
+                      {workspaceProjectStates.map((projectState) => (
+                        <CustomMenu.MenuItem
+                          key={projectState.id}
+                          className="flex items-center gap-2"
+                          onClick={() => handleChangeState(projectState.id)}
+                        >
+                          <span
+                            className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
+                            style={{ backgroundColor: projectState.color ?? "#60646C" }}
+                          />
+                          {projectState.name}
+                        </CustomMenu.MenuItem>
+                      ))}
+                    </CustomMenu>
+                  ) : (
+                    currentProjectState && (
+                      <div className="flex items-center gap-1.5 rounded-sm bg-surface-2 px-2 py-1 text-11 text-secondary">
+                        <span
+                          className="h-2 w-2 flex-shrink-0 rounded-full"
+                          style={{ backgroundColor: currentProjectState.color ?? "#60646C" }}
+                        />
+                        <span className="truncate">{currentProjectState.name}</span>
+                      </div>
+                    )
+                  )}
+                </div>
+              )}
               {isArchived && <div className="text-11 font-medium text-placeholder">Archived</div>}
             </div>
             {isArchived ? (

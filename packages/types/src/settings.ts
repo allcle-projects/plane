@@ -16,7 +16,9 @@ export type TWorkspaceSettingsTabs =
   | "billing-and-plans"
   | "export"
   | "webhooks"
-  | "work-item-types";
+  | "work-item-types"
+  // Project States — mote. See docs/mote-design/04-planning-hierarchy.md, section 3.
+  | "project-states";
 export type TWorkspaceSettingsItem = {
   key: TWorkspaceSettingsTabs;
   i18n_label: string;

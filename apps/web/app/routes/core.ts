@@ -332,6 +332,11 @@ export const coreRoutes: RouteConfigEntry[] = [
             ":workspaceSlug/settings/work-item-types",
             "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/work-item-types/page.tsx"
           ),
+          // Project States (mote, Phase 2 — docs/mote-design/04-planning-hierarchy.md §3)
+          route(
+            ":workspaceSlug/settings/project-states",
+            "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/project-states/page.tsx"
+          ),
         ]),
 
         // --------------------------------------------------------------------

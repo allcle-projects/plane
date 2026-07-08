@@ -1537,6 +1537,11 @@ export default {
           },
         },
       },
+      project_states: {
+        heading: "Project States",
+        description: "Define the lifecycle states a project can move through across your workspace.",
+        title: "Project States",
+      },
       webhooks: {
         heading: "Webhooks",
         description: "Automate notifications to external services when project events occur.",

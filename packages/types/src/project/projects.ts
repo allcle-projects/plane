@@ -30,6 +30,9 @@ export interface IPartialProject {
   module_view: boolean;
   // Milestones — mote. See docs/mote-design/04-planning-hierarchy.md, section 2.
   milestone_view: boolean;
+  // Project States — mote. See docs/mote-design/04-planning-hierarchy.md, section 3.
+  // FK to the workspace-level ProjectState that is this project's status.
+  state?: string | null;
   page_view: boolean;
   inbox_view: boolean;
   guest_view_all_features?: boolean;

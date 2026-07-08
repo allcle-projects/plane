@@ -18,6 +18,8 @@ import type { ITimelineStore } from "./timeline";
 import { TimeLineStore } from "./timeline";
 import type { IUpdateStore } from "./update/update.store";
 import { UpdateStore } from "./update/update.store";
+import type { IWorkspaceProjectStateStore } from "./workspace-project-state/project-state.store";
+import { WorkspaceProjectStateStore } from "./workspace-project-state/project-state.store";
 
 export class RootStore extends CoreRootStore {
   timelineStore: ITimelineStore;
@@ -26,6 +28,7 @@ export class RootStore extends CoreRootStore {
   initiativeStore: IInitiativeStore;
   milestoneStore: IMilestoneStore;
   updateStore: IUpdateStore;
+  workspaceProjectStateStore: IWorkspaceProjectStateStore;
 
   constructor() {
     super();
@@ -36,5 +39,6 @@ export class RootStore extends CoreRootStore {
     this.initiativeStore = new InitiativeStore(this);
     this.milestoneStore = new MilestoneStore(this);
     this.updateStore = new UpdateStore(this);
+    this.workspaceProjectStateStore = new WorkspaceProjectStateStore(this);
   }
 }

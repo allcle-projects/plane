@@ -1657,6 +1657,11 @@ export default {
           },
         },
       },
+      project_states: {
+        heading: "프로젝트 상태",
+        description: "워크스페이스 전반에서 프로젝트가 거칠 수 있는 라이프사이클 상태를 정의합니다.",
+        title: "프로젝트 상태",
+      },
       webhooks: {
         title: "웹훅",
         add_webhook: "웹훅 추가",
