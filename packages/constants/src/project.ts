@@ -132,6 +132,8 @@ export enum EProjectFeatureKey {
   WORK_ITEMS = "work_items",
   CYCLES = "cycles",
   MODULES = "modules",
+  // Milestones — mote. See docs/mote-design/04-planning-hierarchy.md, section 2.
+  MILESTONES = "milestones",
   VIEWS = "views",
   PAGES = "pages",
   INTAKE = "intake",

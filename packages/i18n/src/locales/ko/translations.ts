@@ -18,6 +18,7 @@ export default {
     work_items: "작업 항목",
     cycles: "주기",
     modules: "모듈",
+    milestones: "마일스톤",
     intake: "접수",
     drafts: "초안",
     favorites: "즐겨찾기",

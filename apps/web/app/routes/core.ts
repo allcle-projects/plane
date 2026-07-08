@@ -213,6 +213,16 @@ export const coreRoutes: RouteConfigEntry[] = [
             ),
           ]),
 
+          // Milestones — mote. See docs/mote-design/04-planning-hierarchy.md, section 2.
+          route(
+            ":workspaceSlug/projects/:projectId/milestones",
+            "./(all)/[workspaceSlug]/(projects)/projects/(detail)/[projectId]/milestones/(list)/page.tsx"
+          ),
+          route(
+            ":workspaceSlug/projects/:projectId/milestones/:milestoneId",
+            "./(all)/[workspaceSlug]/(projects)/projects/(detail)/[projectId]/milestones/(detail)/[milestoneId]/page.tsx"
+          ),
+
           // View Detail
           layout("./(all)/[workspaceSlug]/(projects)/projects/(detail)/[projectId]/views/(detail)/layout.tsx", [
             route(

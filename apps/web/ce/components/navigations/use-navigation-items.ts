@@ -81,6 +81,19 @@ export const useNavigationItems = ({
         sortOrder: 3,
       },
       {
+        // Milestones — mote. See docs/mote-design/04-planning-hierarchy.md, section 2.
+        // No i18n entry yet: a missing "sidebar.milestones" key falls back to name.
+        // ModuleIcon reused — propel ships no milestone/target icon.
+        i18n_key: "sidebar.milestones",
+        key: "milestones",
+        name: "Milestones",
+        href: `/${workspaceSlug}/projects/${projectId}/milestones`,
+        icon: ModuleIcon,
+        access: [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+        shouldRender: !!project?.milestone_view,
+        sortOrder: 3.5,
+      },
+      {
         i18n_key: "sidebar.views",
         key: "views",
         name: "Views",

@@ -18,6 +18,7 @@ export default {
     work_items: "Work items",
     cycles: "Cycles",
     modules: "Modules",
+    milestones: "Milestones",
     intake: "Intake",
     drafts: "Drafts",
     favorites: "Favorites",

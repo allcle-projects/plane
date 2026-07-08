@@ -16,6 +16,8 @@ export const getProjectFeatureNavigation = (
   project: {
     cycle_view: boolean;
     module_view: boolean;
+    // Milestones — mote. See docs/mote-design/04-planning-hierarchy.md, section 2.
+    milestone_view: boolean;
     issue_views_view: boolean;
     page_view: boolean;
     inbox_view: boolean;
@@ -50,6 +52,18 @@ export const getProjectFeatureNavigation = (
     access: [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
     shouldRender: project.module_view,
     sortOrder: 3,
+  },
+  {
+    // Milestones — mote. See docs/mote-design/04-planning-hierarchy.md, section 2.
+    // ModuleIcon reused — propel ships no milestone/target icon.
+    i18n_key: "sidebar.milestones",
+    key: EProjectFeatureKey.MILESTONES,
+    name: "Milestones",
+    href: `/${workspaceSlug}/projects/${projectId}/milestones`,
+    icon: ModuleIcon,
+    access: [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+    shouldRender: project.milestone_view,
+    sortOrder: 3.5,
   },
   {
     i18n_key: "sidebar.views",

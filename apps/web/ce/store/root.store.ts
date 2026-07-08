@@ -8,6 +8,8 @@
 import { CoreRootStore } from "@/store/root.store";
 import type { IInitiativeStore } from "./initiative/initiative.store";
 import { InitiativeStore } from "./initiative/initiative.store";
+import type { IMilestoneStore } from "./milestone/milestone.store";
+import { MilestoneStore } from "./milestone/milestone.store";
 import type { IRecurringIssueStore } from "./recurring/recurring-issue.store";
 import { RecurringIssueStore } from "./recurring/recurring-issue.store";
 import type { ITemplateStore } from "./templates/template.store";
@@ -22,6 +24,7 @@ export class RootStore extends CoreRootStore {
   templateStore: ITemplateStore;
   recurringIssueStore: IRecurringIssueStore;
   initiativeStore: IInitiativeStore;
+  milestoneStore: IMilestoneStore;
   updateStore: IUpdateStore;
 
   constructor() {
@@ -31,6 +34,7 @@ export class RootStore extends CoreRootStore {
     this.templateStore = new TemplateStore(this);
     this.recurringIssueStore = new RecurringIssueStore(this);
     this.initiativeStore = new InitiativeStore(this);
+    this.milestoneStore = new MilestoneStore(this);
     this.updateStore = new UpdateStore(this);
   }
 }

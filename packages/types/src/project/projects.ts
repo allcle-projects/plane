@@ -28,6 +28,8 @@ export interface IPartialProject {
   cycle_view: boolean;
   issue_views_view: boolean;
   module_view: boolean;
+  // Milestones — mote. See docs/mote-design/04-planning-hierarchy.md, section 2.
+  milestone_view: boolean;
   page_view: boolean;
   inbox_view: boolean;
   guest_view_all_features?: boolean;

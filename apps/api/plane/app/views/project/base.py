@@ -180,6 +180,7 @@ class ProjectViewSet(BaseViewSet):
             "cycle_view",
             "issue_views_view",
             "module_view",
+            "milestone_view",
             "page_view",
             "inbox_view",
             "guest_view_all_features",
