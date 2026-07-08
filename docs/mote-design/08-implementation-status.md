@@ -68,6 +68,12 @@
 
 > **업데이트(2026-07-08)**: 배포 = 백엔드 v1.3.1-mote.29 + 프론트 v1.3.1-mote.30. **Initiatives**(mote.19–21) + **Updates**(mote.22–23) + **Milestones**(mote.24–28) + **Project States**(mote.29–30, PLANE-30) 완결. 문서 04 남은 것=Project/Module Overview 분석(§5, 프로젝트 side는 대부분 기존, net-new=모듈 3엔드포인트+프론트). ⚠️신규 project 필드(bool/FK)는 `app/views/project/base.py`의 DynamicBaseSerializer 명시 fields allowlist에도 추가해야 프론트 노출(milestone_view·state 교훈). 나머지 대형=문서02(Shared Pages·Collections·Publish Views)·문서05(Teamspaces·Custom RBAC)·문서06(통합·Importers·Automations·Enhanced Search).
 
+## 2026-07-08 CE 기존구현 감사 (헛빌드 방지)
+CE v1.3.1이 설계 작성 시점보다 최신 → 일부 "남은" 기능이 이미 존재. 직접 감사 결과:
+- **✅ 이미 CE 구현(빌드 불필요)**: Estimates TIME 타입(`EstimateType.TIME` 모델+프론트 enum), Project/Module Overview 분석(§5).
+- **🟡 부분 존재**: Importers(`db/models/importer.py`), Integrations(`db/models/integration/`+Slack/GitHub sync 엔드포인트), Shared Pages(page.access pub/priv+is_global 있음, 공개링크 publish 부재), Enhanced Search(icontains 기반; GinIndex+gin_trgm_ops 인프라는 Project/Issue name에 존재하나 trigram 랭킹 미사용).
+- **🔴 완전 신규(net-new 빌드 필요)**: Collections, Publish Views(DeployBoard anchor 재사용), Automations(규칙엔진), Teamspaces(Team 모델 없음), Custom RBAC(role/permission 모델 없음—코드기반 permissions).
+
 ## 다음 착수 권장 (로드맵 Phase 3~4)
 1. **Phase 3 콘텐츠·계획**: Shared Pages·Collections·Publish Views(위키 토대 완성) → Milestones·Project States·Updates.
 2. **Phase 4 XL 트레인**(각 독립 단계): Initiatives → Teamspaces → **Custom RBAC(맨 마지막)**.
