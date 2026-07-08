@@ -94,6 +94,12 @@ class Project(BaseModel):
     icon_prop = models.JSONField(null=True)
     module_view = models.BooleanField(default=False)
     cycle_view = models.BooleanField(default=False)
+    # Gates the project "Milestones" nav tab (P2). See
+    # docs/mote-design/04-planning-hierarchy.md, section 2. Defaults True (unlike
+    # module_view/cycle_view, which the project-create path flips True at creation)
+    # so the AddField migration backfills all existing projects and new projects
+    # expose the tab without touching the project-creation logic.
+    milestone_view = models.BooleanField(default=True)
     issue_views_view = models.BooleanField(default=False)
     page_view = models.BooleanField(default=True)
     intake_view = models.BooleanField(default=False)

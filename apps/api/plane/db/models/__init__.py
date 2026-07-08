@@ -109,4 +109,6 @@ from .recurring import RecurringIssue, RecurringIssueRun
 
 from .initiative import Initiative, InitiativeProject, InitiativeEpic
 
+from .milestone import Milestone, MilestoneIssue
+
 from .update import EntityUpdate, UpdateStatus

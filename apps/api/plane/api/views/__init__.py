@@ -101,6 +101,12 @@ from .module import (
     ModuleLinkListCreateAPIEndpoint,
     ModuleLinkDetailAPIEndpoint,
 )
+from .milestone import (
+    MilestoneListCreateAPIEndpoint,
+    MilestoneDetailAPIEndpoint,
+    MilestoneIssueListCreateAPIEndpoint,
+    MilestoneIssueDetailAPIEndpoint,
+)
 
 from .page import (
     PageListCreateAPIEndpoint,

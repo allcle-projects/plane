@@ -57,6 +57,10 @@ from .module import (
     ModuleUpdateSerializer,
     ModuleLinkSerializer,
 )
+from .milestone import (
+    MilestoneSerializer,
+    MilestoneIssueSerializer,
+)
 from .intake import (
     IntakeIssueSerializer,
     IntakeIssueCreateSerializer,

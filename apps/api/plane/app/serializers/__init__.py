@@ -156,4 +156,9 @@ from .initiative import (
     InitiativeEpicSerializer,
 )
 
+from .milestone import (
+    MilestoneSerializer,
+    MilestoneIssueSerializer,
+)
+
 from .update import EntityUpdateSerializer

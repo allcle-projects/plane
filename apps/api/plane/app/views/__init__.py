@@ -185,6 +185,12 @@ from .initiative import (
     InitiativeAnalyticsEndpoint,
 )
 
+from .milestone import (
+    MilestoneViewSet,
+    MilestoneIssueEndpoint,
+    MilestoneAnalyticsEndpoint,
+)
+
 from .update import (
     ProjectUpdateEndpoint,
     ProjectUpdateDetailEndpoint,
