@@ -7,6 +7,14 @@
 >
 > **Status ledger (as of 2026-07-07):** wiki + page-comments (mote.7), 2FA (mote.8, PLANE-45),
 > time-tracking (mote.9, PLANE-3) are **shipped**. This page covers what's left.
+>
+> **✅ COMPLETE (2026-07-08):** all 6 releases shipped, deployed, and verified —
+> CF (mote.10–13, PLANE-47), Templates (mote.14, PLANE-4), Recurring (mote.15, PLANE-32).
+> Post-ship deep verification (backend e2e + authenticated HTTP path + browser render)
+> caught & fixed 3 real defects: **mote.16** (recurring FOR UPDATE on nullable FK),
+> **mote.17** (template create 400 on required deleted_at), **mote.18** (template instantiate
+> 500 on IssueCreateSerializer bare-instance response). Deployed backend = `v1.3.1-mote.18`.
+> See [`08-implementation-status.md`](./08-implementation-status.md) for the full roadmap status.
 
 ## Dependency spine
 Custom Fields **Phase 1–2 are a hard prerequisite** for Templates/Recurring carrying property
