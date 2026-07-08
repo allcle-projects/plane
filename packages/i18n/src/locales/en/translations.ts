@@ -1542,6 +1542,11 @@ export default {
         description: "Define the lifecycle states a project can move through across your workspace.",
         title: "Project States",
       },
+      roles: {
+        heading: "Roles & Permissions",
+        description: "Define custom roles with granular permissions and assign them to members.",
+        title: "Roles",
+      },
       webhooks: {
         heading: "Webhooks",
         description: "Automate notifications to external services when project events occur.",

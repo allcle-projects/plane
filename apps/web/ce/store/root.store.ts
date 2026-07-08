@@ -16,6 +16,8 @@ import type { IPageCollectionStore } from "./page-collection/page-collection.sto
 import { PageCollectionStore } from "./page-collection/page-collection.store";
 import type { ITeamspaceStore } from "./teamspace/teamspace.store";
 import { TeamspaceStore } from "./teamspace/teamspace.store";
+import type { IRoleStore } from "./role/role.store";
+import { RoleStore } from "./role/role.store";
 import type { IRecurringIssueStore } from "./recurring/recurring-issue.store";
 import { RecurringIssueStore } from "./recurring/recurring-issue.store";
 import type { ITemplateStore } from "./templates/template.store";
@@ -38,6 +40,7 @@ export class RootStore extends CoreRootStore {
   workspaceProjectStateStore: IWorkspaceProjectStateStore;
   pageCollectionStore: IPageCollectionStore;
   teamspaceStore: ITeamspaceStore;
+  roleStore: IRoleStore;
 
   constructor() {
     super();
@@ -52,5 +55,6 @@ export class RootStore extends CoreRootStore {
     this.workspaceProjectStateStore = new WorkspaceProjectStateStore(this);
     this.pageCollectionStore = new PageCollectionStore(this);
     this.teamspaceStore = new TeamspaceStore(this);
+    this.roleStore = new RoleStore(this);
   }
 }

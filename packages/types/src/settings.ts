@@ -18,7 +18,9 @@ export type TWorkspaceSettingsTabs =
   | "webhooks"
   | "work-item-types"
   // Project States — mote. See docs/mote-design/04-planning-hierarchy.md, section 3.
-  | "project-states";
+  | "project-states"
+  // Custom RBAC — mote. See docs/mote-design/05-teamspaces-access.md, section 2.
+  | "roles";
 export type TWorkspaceSettingsItem = {
   key: TWorkspaceSettingsTabs;
   i18n_label: string;

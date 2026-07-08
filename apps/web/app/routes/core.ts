@@ -346,6 +346,11 @@ export const coreRoutes: RouteConfigEntry[] = [
             ":workspaceSlug/settings/project-states",
             "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/project-states/page.tsx"
           ),
+          // Custom RBAC — Roles (mote — docs/mote-design/05-teamspaces-access.md §2)
+          route(
+            ":workspaceSlug/settings/roles",
+            "./(all)/[workspaceSlug]/(settings)/settings/(workspace)/roles/page.tsx"
+          ),
         ]),
 
         // --------------------------------------------------------------------

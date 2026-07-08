@@ -5,7 +5,7 @@
  */
 
 import type { LucideIcon } from "lucide-react";
-import { ArrowUpToLine, Building, CreditCard, ListChecks, SquareStack, Users, Webhook } from "lucide-react";
+import { ArrowUpToLine, Building, CreditCard, ListChecks, ShieldCheck, SquareStack, Users, Webhook } from "lucide-react";
 // plane imports
 import type { ISvgIcons } from "@plane/propel/icons";
 import type { TWorkspaceSettingsTabs } from "@plane/types";
@@ -19,4 +19,6 @@ export const WORKSPACE_SETTINGS_ICONS: Record<TWorkspaceSettingsTabs, LucideIcon
   "work-item-types": ListChecks,
   // Project States — mote. See docs/mote-design/04-planning-hierarchy.md, section 3.
   "project-states": SquareStack,
+  // Custom RBAC — mote. See docs/mote-design/05-teamspaces-access.md, section 2.
+  roles: ShieldCheck,
 };

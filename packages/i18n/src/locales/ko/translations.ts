@@ -1662,6 +1662,11 @@ export default {
         description: "워크스페이스 전반에서 프로젝트가 거칠 수 있는 라이프사이클 상태를 정의합니다.",
         title: "프로젝트 상태",
       },
+      roles: {
+        heading: "역할 및 권한",
+        description: "세분화된 권한을 가진 커스텀 역할을 정의하고 멤버에게 부여합니다.",
+        title: "역할",
+      },
       webhooks: {
         title: "웹훅",
         add_webhook: "웹훅 추가",
