@@ -23,6 +23,12 @@ SCHEDULE_FIELDS = (
 
 
 class RecurringIssueSerializer(BaseSerializer):
+    # Server-managed soft-delete column; never client-writable on create/update
+    # (deletion goes through the destroy endpoint). Kept read_only for parity
+    # with TemplateSerializer even though RecurringIssue has no unique_together
+    # on deleted_at, so it does not hit the required-field trap on its own.
+    deleted_at = serializers.DateTimeField(read_only=True)
+
     class Meta:
         model = RecurringIssue
         fields = "__all__"
