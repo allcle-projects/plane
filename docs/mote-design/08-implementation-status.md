@@ -25,8 +25,9 @@
 | 03 | **Templates**(작업+프로젝트) | mote.14 | PLANE-4 | |
 | 03 | **Recurring Work Items** | mote.15 | PLANE-32 | celery-beat DatabaseScheduler |
 | 04 | **Initiatives** (P1 모델/CRUD·P2 rollup·P3 프론트) | mote.19–21 | PLANE-33 | 워크스페이스 그룹핑(마이그 0134). 사이드바 nav+list/detail |
+| 04 | **Updates**(상태 포스트) (P1 백엔드·P2 프론트) | mote.22–23 | PLANE-29 | EntityUpdate 3-스코프(project/cycle/initiative, 마이그0135). 재사용 UpdatesPanel 3면 마운트 |
 
-**⇒ 문서 03(Work Item Power) 전량 완결 + 문서 04 Initiatives 완결.**
+**⇒ 문서 03(Work Item Power) 전량 완결 + 문서 04 Initiatives·Updates 완결.**
 
 ### 2026-07-08 심층검증에서 잡은 실결함 3건 (전부 수정·재검증)
 운영에 갈 뻔한 결함을 단위검증이 아닌 **e2e·인증 실경로 검증**이 발견:
@@ -52,7 +53,7 @@
 | 04 | ~~Initiatives~~ | XL | ✅ 완료 (mote.19–21, PLANE-33) |
 | 04 | Milestones | M | 미착수 |
 | 04 | Project States | M | 미착수 |
-| 04 | Updates(상태 포스트) | M | 미착수 |
+| 04 | ~~Updates(상태 포스트)~~ | M | ✅ 완료 (mote.22–23, PLANE-29) |
 | 04 | Project/Module Overview 분석 | S–M | 미착수 |
 | 05 | **Teamspaces** | XL | 미착수 (orphan `Team` 모델 재사용) |
 | 05 | **Custom RBAC** | XL | 미착수 (**맨 마지막**, 최대 blast radius) |
@@ -63,7 +64,7 @@
 | 06 | Automations(규칙엔진) | L | 미착수 |
 | 06 | Enhanced Search(pg_trgm+FTS) | M | 미착수 |
 
-> **업데이트(2026-07-08)**: 배포 = 백엔드 v1.3.1-mote.20 + 프론트 v1.3.1-mote.21. **Initiatives 완결**(P1 모델/CRUD·P2 rollup·P3 프론트, PLANE-33 Done). Updates(§4)의 initiative FK가 이제 해소돼 착수 가능.
+> **업데이트(2026-07-08)**: 배포 = 백엔드 v1.3.1-mote.22 + 프론트 v1.3.1-mote.23. **Initiatives 완결**(mote.19–21, PLANE-33) + **Updates 완결**(mote.22–23, PLANE-29, EntityUpdate 3-스코프 + 재사용 UpdatesPanel). 문서 04 남은 것=Milestones·Project States·Overview 분석.
 
 ## 다음 착수 권장 (로드맵 Phase 3~4)
 1. **Phase 3 콘텐츠·계획**: Shared Pages·Collections·Publish Views(위키 토대 완성) → Milestones·Project States·Updates.
