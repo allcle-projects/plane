@@ -27,8 +27,9 @@
 | 04 | **Initiatives** (P1 모델/CRUD·P2 rollup·P3 프론트) | mote.19–21 | PLANE-33 | 워크스페이스 그룹핑(마이그 0134). 사이드바 nav+list/detail |
 | 04 | **Updates**(상태 포스트) (P1 백엔드·P2 프론트) | mote.22–23 | PLANE-29 | EntityUpdate 3-스코프(project/cycle/initiative, 마이그0135). 재사용 UpdatesPanel 3면 마운트 |
 | 04 | **Milestones** (P1 백엔드·P2 프론트) | mote.24–28 | PLANE-31 | Milestone+MilestoneIssue+rollup(마이그0136). 프로젝트 nav 탭(milestone_view). Module 패턴 클론 |
+| 04 | **Project States** (P1 백엔드·P2 프론트) | mote.29–30 | PLANE-30 | ProjectState+Project.state(마이그0137, 워크스페이스당 6상태 시드). 설정편집기+카드뱃지+group-by. State 패턴 클론 |
 
-**⇒ 문서 03(Work Item Power) 전량 완결 + 문서 04 Initiatives·Updates·Milestones 완결.**
+**⇒ 문서 03(Work Item Power) 전량 완결 + 문서 04 Initiatives·Updates·Milestones·Project States 완결(남은 §5 Overview분석만).**
 
 ### 2026-07-08 심층검증에서 잡은 실결함 3건 (전부 수정·재검증)
 운영에 갈 뻔한 결함을 단위검증이 아닌 **e2e·인증 실경로 검증**이 발견:
@@ -53,7 +54,7 @@
 | 02 | Page Comments 인라인 앵커 | XL | 미착수(문서레벨 rail의 phase 2) |
 | 04 | ~~Initiatives~~ | XL | ✅ 완료 (mote.19–21, PLANE-33) |
 | 04 | ~~Milestones~~ | M | ✅ 완료 (mote.24–28, PLANE-31) |
-| 04 | Project States | M | 미착수 |
+| 04 | ~~Project States~~ | M | ✅ 완료 (mote.29–30, PLANE-30) |
 | 04 | ~~Updates(상태 포스트)~~ | M | ✅ 완료 (mote.22–23, PLANE-29) |
 | 04 | Project/Module Overview 분석 | S–M | 미착수 |
 | 05 | **Teamspaces** | XL | 미착수 (orphan `Team` 모델 재사용) |
@@ -65,7 +66,7 @@
 | 06 | Automations(규칙엔진) | L | 미착수 |
 | 06 | Enhanced Search(pg_trgm+FTS) | M | 미착수 |
 
-> **업데이트(2026-07-08)**: 배포 = 백엔드 v1.3.1-mote.26 + 프론트 v1.3.1-mote.28. **Initiatives**(mote.19–21, PLANE-33) + **Updates**(mote.22–23, PLANE-29) + **Milestones**(mote.24–28, PLANE-31) 완결. 문서 04 남은 것=Project States·Project/Module Overview 분석. ⚠️신규 project boolean 필드는 `app/views/project/base.py`의 DynamicBaseSerializer 명시 fields allowlist에도 추가해야 프론트 노출됨(milestone_view 교훈).
+> **업데이트(2026-07-08)**: 배포 = 백엔드 v1.3.1-mote.29 + 프론트 v1.3.1-mote.30. **Initiatives**(mote.19–21) + **Updates**(mote.22–23) + **Milestones**(mote.24–28) + **Project States**(mote.29–30, PLANE-30) 완결. 문서 04 남은 것=Project/Module Overview 분석(§5, 프로젝트 side는 대부분 기존, net-new=모듈 3엔드포인트+프론트). ⚠️신규 project 필드(bool/FK)는 `app/views/project/base.py`의 DynamicBaseSerializer 명시 fields allowlist에도 추가해야 프론트 노출(milestone_view·state 교훈). 나머지 대형=문서02(Shared Pages·Collections·Publish Views)·문서05(Teamspaces·Custom RBAC)·문서06(통합·Importers·Automations·Enhanced Search).
 
 ## 다음 착수 권장 (로드맵 Phase 3~4)
 1. **Phase 3 콘텐츠·계획**: Shared Pages·Collections·Publish Views(위키 토대 완성) → Milestones·Project States·Updates.
