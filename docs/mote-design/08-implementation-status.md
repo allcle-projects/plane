@@ -24,8 +24,9 @@
 | 03 | **Custom Fields / Work Item Properties** (4단계) | mote.10~13 | PLANE-47 | 정의·값·컬럼·필터+공개v1 |
 | 03 | **Templates**(작업+프로젝트) | mote.14 | PLANE-4 | |
 | 03 | **Recurring Work Items** | mote.15 | PLANE-32 | celery-beat DatabaseScheduler |
+| 04 | **Initiatives** (P1 모델/CRUD·P2 rollup·P3 프론트) | mote.19–21 | PLANE-33 | 워크스페이스 그룹핑(마이그 0134). 사이드바 nav+list/detail |
 
-**⇒ 문서 03(Work Item Power) = Custom Fields·Templates·Recurring·Time Tracking 전량 완결.**
+**⇒ 문서 03(Work Item Power) 전량 완결 + 문서 04 Initiatives 완결.**
 
 ### 2026-07-08 심층검증에서 잡은 실결함 3건 (전부 수정·재검증)
 운영에 갈 뻔한 결함을 단위검증이 아닌 **e2e·인증 실경로 검증**이 발견:
@@ -48,7 +49,7 @@
 | 02 | Collections | M | 미착수 |
 | 02 | Publish Views(+페이지 게시) | L | 미착수 |
 | 02 | Page Comments 인라인 앵커 | XL | 미착수(문서레벨 rail의 phase 2) |
-| 04 | **Initiatives** | XL | 미착수 (사이드바 IA·Updates FK 선행) |
+| 04 | ~~Initiatives~~ | XL | ✅ 완료 (mote.19–21, PLANE-33) |
 | 04 | Milestones | M | 미착수 |
 | 04 | Project States | M | 미착수 |
 | 04 | Updates(상태 포스트) | M | 미착수 |
@@ -61,6 +62,8 @@
 | 06 | Importers CSV/멤버 · Notion/Confluence | M/L | 미착수 |
 | 06 | Automations(규칙엔진) | L | 미착수 |
 | 06 | Enhanced Search(pg_trgm+FTS) | M | 미착수 |
+
+> **업데이트(2026-07-08)**: 배포 = 백엔드 v1.3.1-mote.20 + 프론트 v1.3.1-mote.21. **Initiatives 완결**(P1 모델/CRUD·P2 rollup·P3 프론트, PLANE-33 Done). Updates(§4)의 initiative FK가 이제 해소돼 착수 가능.
 
 ## 다음 착수 권장 (로드맵 Phase 3~4)
 1. **Phase 3 콘텐츠·계획**: Shared Pages·Collections·Publish Views(위키 토대 완성) → Milestones·Project States·Updates.
