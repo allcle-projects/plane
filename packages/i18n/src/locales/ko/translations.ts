@@ -2689,4 +2689,23 @@ export default {
       delete_error: "컬렉션을 삭제하지 못했습니다. 다시 시도해 주세요.",
     },
   },
+  // Shared Pages — mote (docs/mote-design/02-wiki-publishing.md, Feature 3)
+  page_share: {
+    button_label: "공유",
+    modal_title: "페이지 공유",
+    add_member_placeholder: "멤버 추가",
+    add: "추가",
+    role: {
+      viewer: "뷰어",
+      member: "편집 가능",
+    },
+    current_collaborators: "접근 권한 보유자",
+    empty: "아직 접근 권한을 가진 사람이 없습니다",
+    remove: "제거",
+    toast: {
+      add_error: "공동 작업자를 추가하지 못했습니다. 다시 시도해 주세요.",
+      update_role_error: "권한을 변경하지 못했습니다. 다시 시도해 주세요.",
+      remove_error: "공동 작업자를 제거하지 못했습니다. 다시 시도해 주세요.",
+    },
+  },
 } as const;

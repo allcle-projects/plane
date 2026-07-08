@@ -2794,4 +2794,23 @@ export default {
       delete_error: "Collection could not be deleted. Please try again.",
     },
   },
+  // Shared Pages — mote (docs/mote-design/02-wiki-publishing.md, Feature 3)
+  page_share: {
+    button_label: "Share",
+    modal_title: "Share page",
+    add_member_placeholder: "Add a member",
+    add: "Add",
+    role: {
+      viewer: "Viewer",
+      member: "Can edit",
+    },
+    current_collaborators: "Who has access",
+    empty: "No one else has access yet",
+    remove: "Remove",
+    toast: {
+      add_error: "Could not add collaborator. Please try again.",
+      update_role_error: "Could not update role. Please try again.",
+      remove_error: "Could not remove collaborator. Please try again.",
+    },
+  },
 } as const;
