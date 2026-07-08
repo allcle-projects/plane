@@ -26,7 +26,10 @@ from rest_framework import status
 # Module imports
 from ..base import BaseViewSet, BaseAPIView
 from plane.app.permissions import allow_permission, ROLE
-from plane.app.serializers import TemplateSerializer, IssueCreateSerializer
+from plane.app.serializers import (
+    TemplateSerializer,
+    IssueDetailSerializer,
+)
 from plane.bgtasks.issue_activities_task import issue_activity
 from plane.utils.host import base_host
 from plane.utils.issue_instantiation import instantiate_issue_from_data
@@ -143,6 +146,11 @@ class TemplateInstantiateEndpoint(BaseAPIView):
                 origin=base_host(request=request, is_app=True),
             )
 
+        # Serialize the response with the read serializer, NOT IssueCreateSerializer:
+        # IssueCreateSerializer.to_representation reads self.initial_data, which only
+        # exists when the serializer was built with data=... (a deserialize). Passing
+        # a bare instance here raised AttributeError (500) *after* the issue was
+        # already created. IssueDetailSerializer is a pure read serializer.
         return Response(
-            IssueCreateSerializer(issue).data, status=status.HTTP_201_CREATED
+            IssueDetailSerializer(issue).data, status=status.HTTP_201_CREATED
         )
