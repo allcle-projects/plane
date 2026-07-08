@@ -7,7 +7,7 @@
 ## 요약: 로드맵 24개 기능 중 대략 절반 완료
 
 문서 **03(Work Item Power) 전량 완료**, 문서 02·05 부분 완료, 문서 **04·06 거의 미착수**.
-남은 대형(XL) 기능: **Custom RBAC**(맨 마지막) + Integrations · Importers · Enhanced Search.
+남은 대형(XL) 기능: **Custom RBAC**(맨 마지막) + Integrations · Importers (Enhanced Search는 이미 완료—mote.6/0124).
 
 ## ✅ 완료 (배포·검증)
 
@@ -70,7 +70,7 @@
 | 06 | 통합 Slack/GitHub/Sentry/GitLab | S~M | 미착수(아웃바운드 웹훅+task-bot 방식 권고) |
 | 06 | Importers CSV/멤버 · Notion/Confluence | M/L | 미착수 |
 | 06 | ~~Automations(규칙엔진)~~ | L | ✅ 완료 (mote.34, PLANE-40) — AutomationRule+Log(마이그0140)·issue_activities 핫패스 훅·rule-builder. e2e 7/7 |
-| 06 | Enhanced Search(pg_trgm+FTS) | M | 미착수 |
+| 06 | ~~Enhanced Search(pg_trgm)~~ | M | ✅ 완료 (mote.6, 마이그0124) — `utils/issue_search.py` TrigramSimilarity 랭킹(임계0.3, 오타허용)·`ranked_search`가 search/base.py 전 엔티티(issue/project/cycle/module/page/view/workspace)에 적용·gin_trgm 인덱스 8종 DB적용 확인. **오타검색 실검증**('plabe'→'plane fork'). FTS(tsvector)는 미도입=trigram으로 충분 |
 
 > **업데이트(2026-07-08)**: 배포 = 백엔드 v1.3.1-mote.29 + 프론트 v1.3.1-mote.30. **Initiatives**(mote.19–21) + **Updates**(mote.22–23) + **Milestones**(mote.24–28) + **Project States**(mote.29–30, PLANE-30) 완결. 문서 04 남은 것=Project/Module Overview 분석(§5, 프로젝트 side는 대부분 기존, net-new=모듈 3엔드포인트+프론트). ⚠️신규 project 필드(bool/FK)는 `app/views/project/base.py`의 DynamicBaseSerializer 명시 fields allowlist에도 추가해야 프론트 노출(milestone_view·state 교훈). 나머지 대형=문서02(Shared Pages·Collections·Publish Views)·문서05(Teamspaces·Custom RBAC)·문서06(통합·Importers·Automations·Enhanced Search).
 
