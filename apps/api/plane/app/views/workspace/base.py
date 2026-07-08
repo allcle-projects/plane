@@ -46,6 +46,7 @@ from plane.app.permissions import ROLE, allow_permission
 from plane.utils.constants import RESTRICTED_WORKSPACE_SLUGS
 from plane.license.utils.instance_value import get_configuration_value
 from plane.bgtasks.workspace_seed_task import workspace_seed
+from plane.bgtasks.project_state_task import create_default_project_states
 from plane.bgtasks.event_tracking_task import track_event
 from plane.utils.url import contains_url
 from plane.utils.analytics_events import WORKSPACE_CREATED, WORKSPACE_DELETED
@@ -128,6 +129,14 @@ class WorkSpaceViewSet(BaseViewSet):
                     member=request.user,
                     role=20,
                     company_role=request.data.get("company_role", ""),
+                )
+
+                # Seed the default workspace-level project states (mote). See
+                # docs/mote-design/04-planning-hierarchy.md, section 3. Mirrors
+                # the inline issue-state seeding on project create; idempotent.
+                create_default_project_states(
+                    workspace_id=serializer.data["id"],
+                    created_by_id=request.user.id,
                 )
 
                 # Get total members and role

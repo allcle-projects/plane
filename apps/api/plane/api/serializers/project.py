@@ -92,6 +92,9 @@ class ProjectCreateSerializer(BaseSerializer):
             "external_id",
             "is_issue_type_enabled",
             "is_time_tracking_enabled",
+            # Workspace-level project status (mote). See
+            # docs/mote-design/04-planning-hierarchy.md, section 3.
+            "state",
         ]
 
         read_only_fields = [

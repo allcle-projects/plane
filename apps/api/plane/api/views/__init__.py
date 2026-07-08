@@ -108,6 +108,11 @@ from .milestone import (
     MilestoneIssueDetailAPIEndpoint,
 )
 
+from .project_state import (
+    ProjectStateListCreateAPIEndpoint,
+    ProjectStateDetailAPIEndpoint,
+)
+
 from .page import (
     PageListCreateAPIEndpoint,
     PageDetailAPIEndpoint,

@@ -111,4 +111,6 @@ from .initiative import Initiative, InitiativeProject, InitiativeEpic
 
 from .milestone import Milestone, MilestoneIssue
 
+from .project_state import ProjectState, ProjectStateGroup, DEFAULT_PROJECT_STATES
+
 from .update import EntityUpdate, UpdateStatus

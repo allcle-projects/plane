@@ -191,6 +191,8 @@ from .milestone import (
     MilestoneAnalyticsEndpoint,
 )
 
+from .project_state import ProjectStateViewSet
+
 from .update import (
     ProjectUpdateEndpoint,
     ProjectUpdateDetailEndpoint,

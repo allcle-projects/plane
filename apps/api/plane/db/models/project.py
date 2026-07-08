@@ -119,6 +119,17 @@ class Project(BaseModel):
     close_in = models.IntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(12)])
     logo_props = models.JSONField(default=dict)
     default_state = models.ForeignKey("db.State", on_delete=models.SET_NULL, null=True, related_name="default_state")
+    # Workspace-level project status (mote). See
+    # docs/mote-design/04-planning-hierarchy.md, section 3 ("Project States").
+    # Mirrors the ``default_state`` FK style above but points to ProjectState so
+    # the projects list can be grouped/kanban'd by status.
+    state = models.ForeignKey(
+        "db.ProjectState",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="projects",
+    )
     archived_at = models.DateTimeField(null=True)
     # timezone
     TIMEZONE_CHOICES = tuple(zip(pytz.common_timezones, pytz.common_timezones))

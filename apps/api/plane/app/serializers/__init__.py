@@ -161,4 +161,6 @@ from .milestone import (
     MilestoneIssueSerializer,
 )
 
+from .project_state import ProjectStateSerializer
+
 from .update import EntityUpdateSerializer

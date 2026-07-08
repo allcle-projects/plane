@@ -61,6 +61,7 @@ from .milestone import (
     MilestoneSerializer,
     MilestoneIssueSerializer,
 )
+from .project_state import ProjectStateSerializer
 from .intake import (
     IntakeIssueSerializer,
     IntakeIssueCreateSerializer,
