@@ -30,6 +30,7 @@
 | 04 | **Project States** (P1 백엔드·P2 프론트) | mote.29–30 | PLANE-30 | ProjectState+Project.state(마이그0137, 워크스페이스당 6상태 시드). 설정편집기+카드뱃지+group-by. State 패턴 클론 |
 
 | 02 | **Collections** (P1 백엔드·P2 프론트) | mote.31 | PLANE-40 | PageCollection+PageCollectionItem(마이그0138). 위키 Collections rail. owner전용 변경·멱등 add_pages |
+| 02 | **Shared Pages** (P1 백엔드·P2 프론트) | mote.32 | PLANE-40 | PageCollaborator(마이그0139). 헤더 Share 모달·역할별 게이팅. v1=위키페이지·Yjs게이팅 follow-up |
 
 **⇒ 문서 03(Work Item Power) 전량 완결 + 문서 04 전량 완결(§5 CE기존) + 문서 02 Collections 완결.**
 
@@ -50,7 +51,7 @@
 |---|---|---|---|
 | 01 | Estimates 시간(TIME) 타입 | S | 미착수 |
 | 01 | 사이클 자동 스케줄 | M | 부분(수동 일부만) |
-| 02 | Shared Pages | M | 미착수 |
+| 02 | ~~Shared Pages~~ | M | ✅ 완료 (mote.32, PLANE-40) — PageCollaborator(마이그0139)·헤더 Share 모달. v1=위키페이지, Yjs게이팅 follow-up |
 | 02 | ~~Collections~~ | M | ✅ 완료 (mote.31, PLANE-40) — PageCollection+Item(마이그0138)·위키 Collections rail |
 | 02 | Publish Views(+페이지 게시) | L | 미착수 |
 | 02 | Page Comments 인라인 앵커 | XL | 미착수(문서레벨 rail의 phase 2) |
