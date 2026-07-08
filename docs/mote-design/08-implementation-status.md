@@ -56,7 +56,7 @@
 | 04 | ~~Milestones~~ | M | ✅ 완료 (mote.24–28, PLANE-31) |
 | 04 | ~~Project States~~ | M | ✅ 완료 (mote.29–30, PLANE-30) |
 | 04 | ~~Updates(상태 포스트)~~ | M | ✅ 완료 (mote.22–23, PLANE-29) |
-| 04 | Project/Module Overview 분석 | S–M | 미착수 |
+| 04 | ~~Project/Module Overview 분석~~ | S–M | ✅ CE 기존구현(검증) — ProjectModuleOverview 컴포넌트+advance-analytics 엔드포인트. 프로젝트/모듈 overview 페이지 실브라우저 렌더 확인(인사이트카드+Created vs Resolved+Customized Insights). 신규개발 불필요 |
 | 05 | **Teamspaces** | XL | 미착수 (orphan `Team` 모델 재사용) |
 | 05 | **Custom RBAC** | XL | 미착수 (**맨 마지막**, 최대 blast radius) |
 | 05 | Guest 좌석비율(1:5) | S | 미착수(생략 권고) |
