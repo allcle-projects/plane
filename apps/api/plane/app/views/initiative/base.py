@@ -24,6 +24,7 @@ from plane.app.serializers import (
     InitiativeProjectSerializer,
     InitiativeEpicSerializer,
 )
+from plane.bgtasks.initiative_rollup_task import compute_initiative_snapshot
 from plane.db.models import (
     Workspace,
     Initiative,
@@ -198,3 +199,25 @@ class InitiativeEpicEndpoint(BaseAPIView):
         )
         initiative_epic.delete()  # soft-delete (deleted_at)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class InitiativeAnalyticsEndpoint(BaseAPIView):
+    """Rollup progress for one Initiative.
+
+    Recomputes the completion snapshot across the Initiative's linked projects
+    and epics, persists it to ``Initiative.progress_snapshot`` (so list/detail
+    reads stay cheap and never aggregate live), and returns it. This is the
+    on-demand refresh trigger; the same computation runs async via
+    ``update_initiative_progress`` on issue state changes.
+    """
+
+    @allow_permission([ROLE.ADMIN, ROLE.MEMBER, ROLE.GUEST], level="WORKSPACE")
+    def get(self, request, slug, initiative_id):
+        initiative = Initiative.objects.get(
+            workspace__slug=slug, pk=initiative_id
+        )
+        snapshot = compute_initiative_snapshot(initiative)
+        # Persist the freshly computed rollup so cached reads elsewhere are current.
+        initiative.progress_snapshot = snapshot
+        initiative.save(update_fields=["progress_snapshot", "updated_at"])
+        return Response(snapshot, status=status.HTTP_200_OK)

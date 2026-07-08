@@ -182,6 +182,7 @@ from .initiative import (
     InitiativeViewSet,
     InitiativeProjectEndpoint,
     InitiativeEpicEndpoint,
+    InitiativeAnalyticsEndpoint,
 )
 
 from .module.base import (

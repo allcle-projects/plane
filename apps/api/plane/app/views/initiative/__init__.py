@@ -6,4 +6,5 @@ from .base import (
     InitiativeViewSet,
     InitiativeProjectEndpoint,
     InitiativeEpicEndpoint,
+    InitiativeAnalyticsEndpoint,
 )

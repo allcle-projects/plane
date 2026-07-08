@@ -11,6 +11,7 @@ from plane.app.views import (
     InitiativeViewSet,
     InitiativeProjectEndpoint,
     InitiativeEpicEndpoint,
+    InitiativeAnalyticsEndpoint,
 )
 
 
@@ -49,5 +50,11 @@ urlpatterns = [
         "workspaces/<str:slug>/initiatives/<uuid:initiative_id>/epics/<uuid:epic_id>/",
         InitiativeEpicEndpoint.as_view(),
         name="initiative-epics",
+    ),
+    # Rollup progress (recompute + persist + return the snapshot).
+    path(
+        "workspaces/<str:slug>/initiatives/<uuid:initiative_id>/analytics/",
+        InitiativeAnalyticsEndpoint.as_view(),
+        name="initiative-analytics",
     ),
 ]
