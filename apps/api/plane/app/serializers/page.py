@@ -23,6 +23,8 @@ from plane.db.models import (
     Workspace,
     PageComment,
     PageCommentReaction,
+    PageCollection,
+    PageCollectionItem,
 )
 
 
@@ -186,6 +188,48 @@ class PageBinaryUpdateSerializer(serializers.Serializer):
     description_binary = serializers.CharField(required=False, allow_blank=True)
     description_html = serializers.CharField(required=False, allow_blank=True)
     description_json = serializers.JSONField(required=False, allow_null=True)
+
+
+class PageCollectionSerializer(BaseSerializer):
+    page_ids = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PageCollection
+        fields = [
+            "id",
+            "name",
+            "owned_by",
+            "logo_props",
+            "sort_order",
+            "is_shared",
+            "page_ids",
+            "workspace",
+            "created_at",
+            "updated_at",
+            "created_by",
+            "updated_by",
+        ]
+        read_only_fields = ["workspace", "owned_by", "deleted_at"]
+
+    def get_page_ids(self, obj):
+        return list(obj.items.filter(deleted_at__isnull=True).values_list("page_id", flat=True))
+
+
+class PageCollectionItemSerializer(BaseSerializer):
+    class Meta:
+        model = PageCollectionItem
+        fields = [
+            "id",
+            "workspace",
+            "collection",
+            "page",
+            "sort_order",
+            "created_at",
+            "updated_at",
+            "created_by",
+            "updated_by",
+        ]
+        read_only_fields = ["workspace", "collection", "deleted_at"]
 
 
 class PageCommentReactionSerializer(BaseSerializer):

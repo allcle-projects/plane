@@ -223,6 +223,7 @@ from .page.base import (
 )
 from .page.version import PageVersionEndpoint
 from .page.comment import PageCommentViewSet, PageCommentReactionViewSet
+from .page.collection import PageCollectionViewSet
 
 from .search.base import GlobalSearchEndpoint, SearchEndpoint
 from .search.issue import IssueSearchEndpoint

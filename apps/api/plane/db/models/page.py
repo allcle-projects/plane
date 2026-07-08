@@ -159,6 +159,56 @@ class ProjectPage(BaseModel):
         return f"{self.project.name} {self.page.name}"
 
 
+class PageCollection(BaseModel):
+    workspace = models.ForeignKey("db.Workspace", on_delete=models.CASCADE, related_name="page_collections")
+    name = models.CharField(max_length=255)
+    owned_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="page_collections")
+    logo_props = models.JSONField(default=dict)
+    sort_order = models.FloatField(default=65535)
+    is_shared = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ["name", "workspace", "owned_by", "deleted_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["name", "workspace", "owned_by"],
+                condition=models.Q(deleted_at__isnull=True),
+                name="page_collection_unique_name_when_deleted_at_null",
+            )
+        ]
+        verbose_name = "Page Collection"
+        verbose_name_plural = "Page Collections"
+        db_table = "page_collections"
+        ordering = ("sort_order",)
+
+    def __str__(self):
+        return f"{self.name}"
+
+
+class PageCollectionItem(BaseModel):
+    workspace = models.ForeignKey("db.Workspace", on_delete=models.CASCADE, related_name="page_collection_items")
+    collection = models.ForeignKey("db.PageCollection", on_delete=models.CASCADE, related_name="items")
+    page = models.ForeignKey("db.Page", on_delete=models.CASCADE, related_name="collection_items")
+    sort_order = models.FloatField(default=65535)
+
+    class Meta:
+        unique_together = ["collection", "page", "deleted_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["collection", "page"],
+                condition=models.Q(deleted_at__isnull=True),
+                name="page_collection_item_unique_when_deleted_at_null",
+            )
+        ]
+        verbose_name = "Page Collection Item"
+        verbose_name_plural = "Page Collection Items"
+        db_table = "page_collection_items"
+        ordering = ("sort_order",)
+
+    def __str__(self):
+        return f"{self.collection_id} {self.page_id}"
+
+
 class PageVersion(BaseModel):
     workspace = models.ForeignKey("db.Workspace", on_delete=models.CASCADE, related_name="page_versions")
     page = models.ForeignKey("db.Page", on_delete=models.CASCADE, related_name="page_versions")

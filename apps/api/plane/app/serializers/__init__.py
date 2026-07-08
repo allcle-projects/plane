@@ -103,6 +103,8 @@ from .page import (
     PageVersionDetailSerializer,
     PageCommentSerializer,
     PageCommentReactionSerializer,
+    PageCollectionSerializer,
+    PageCollectionItemSerializer,
 )
 
 from .estimate import (

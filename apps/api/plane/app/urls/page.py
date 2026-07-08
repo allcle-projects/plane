@@ -13,6 +13,7 @@ from plane.app.views import (
     PageDuplicateEndpoint,
     PageCommentViewSet,
     PageCommentReactionViewSet,
+    PageCollectionViewSet,
 )
 
 urlpatterns = [
@@ -140,5 +141,26 @@ urlpatterns = [
         "workspaces/<str:slug>/pages/<uuid:page_id>/comments/<uuid:comment_id>/reactions/<str:reaction_code>/",
         PageCommentReactionViewSet.as_view({"delete": "destroy"}),
         name="page-comment-reactions",
+    ),
+    # Page collections
+    path(
+        "workspaces/<str:slug>/page-collections/",
+        PageCollectionViewSet.as_view({"get": "list", "post": "create"}),
+        name="page-collections",
+    ),
+    path(
+        "workspaces/<str:slug>/page-collections/<uuid:pk>/",
+        PageCollectionViewSet.as_view({"get": "retrieve", "patch": "partial_update", "delete": "destroy"}),
+        name="page-collections",
+    ),
+    path(
+        "workspaces/<str:slug>/page-collections/<uuid:collection_id>/pages/",
+        PageCollectionViewSet.as_view({"post": "add_pages"}),
+        name="page-collection-pages",
+    ),
+    path(
+        "workspaces/<str:slug>/page-collections/<uuid:collection_id>/pages/<uuid:page_id>/",
+        PageCollectionViewSet.as_view({"delete": "remove_page"}),
+        name="page-collection-pages",
     ),
 ]
