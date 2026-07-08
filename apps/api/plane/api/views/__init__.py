@@ -82,6 +82,11 @@ from .cycle import (
     CycleCompleteAPIEndpoint,
 )
 
+from .initiative import (
+    InitiativeListCreateAPIEndpoint,
+    InitiativeDetailAPIEndpoint,
+)
+
 from .module import (
     ModuleListCreateAPIEndpoint,
     ModuleDetailAPIEndpoint,

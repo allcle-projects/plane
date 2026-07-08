@@ -178,6 +178,12 @@ from .recurring import (
     RecurringIssueRunEndpoint,
 )
 
+from .initiative import (
+    InitiativeViewSet,
+    InitiativeProjectEndpoint,
+    InitiativeEpicEndpoint,
+)
+
 from .module.base import (
     ModuleViewSet,
     ModuleLinkViewSet,

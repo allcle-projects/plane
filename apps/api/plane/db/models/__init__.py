@@ -106,3 +106,5 @@ from .worklog import IssueWorklog, IssueTimer
 from .template import Template
 
 from .recurring import RecurringIssue, RecurringIssueRun
+
+from .initiative import Initiative, InitiativeProject, InitiativeEpic
