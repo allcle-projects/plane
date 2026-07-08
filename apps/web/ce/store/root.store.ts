@@ -14,6 +14,8 @@ import type { IMilestoneStore } from "./milestone/milestone.store";
 import { MilestoneStore } from "./milestone/milestone.store";
 import type { IPageCollectionStore } from "./page-collection/page-collection.store";
 import { PageCollectionStore } from "./page-collection/page-collection.store";
+import type { ITeamspaceStore } from "./teamspace/teamspace.store";
+import { TeamspaceStore } from "./teamspace/teamspace.store";
 import type { IRecurringIssueStore } from "./recurring/recurring-issue.store";
 import { RecurringIssueStore } from "./recurring/recurring-issue.store";
 import type { ITemplateStore } from "./templates/template.store";
@@ -35,6 +37,7 @@ export class RootStore extends CoreRootStore {
   updateStore: IUpdateStore;
   workspaceProjectStateStore: IWorkspaceProjectStateStore;
   pageCollectionStore: IPageCollectionStore;
+  teamspaceStore: ITeamspaceStore;
 
   constructor() {
     super();
@@ -48,5 +51,6 @@ export class RootStore extends CoreRootStore {
     this.updateStore = new UpdateStore(this);
     this.workspaceProjectStateStore = new WorkspaceProjectStateStore(this);
     this.pageCollectionStore = new PageCollectionStore(this);
+    this.teamspaceStore = new TeamspaceStore(this);
   }
 }

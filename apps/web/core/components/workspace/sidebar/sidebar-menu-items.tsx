@@ -8,7 +8,7 @@ import React, { useMemo } from "react";
 import { observer } from "mobx-react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
-import { Ellipsis, Target } from "lucide-react";
+import { Ellipsis, Target, Users } from "lucide-react";
 import { Disclosure, Transition } from "@headlessui/react";
 // plane imports
 import {
@@ -38,6 +38,7 @@ export const SidebarMenuItems = observer(function SidebarMenuItems() {
   const pathname = usePathname();
   const slug = workspaceSlug?.toString() ?? "";
   const initiativesHref = `/${slug}/initiatives`;
+  const teamspacesHref = `/${slug}/teamspaces`;
   const { setValue: toggleWorkspaceMenu, storedValue: isWorkspaceMenuOpen } = useLocalStorage<boolean>(
     "is_workspace_menu_open",
     true
@@ -112,6 +113,15 @@ export const SidebarMenuItems = observer(function SidebarMenuItems() {
             <div className="flex items-center gap-1.5 py-[1px]">
               <Target className="size-4 flex-shrink-0" />
               <p className="text-13 leading-5 font-medium">Initiatives</p>
+            </div>
+          </SidebarNavItem>
+        </Link>
+        {/* Teamspaces (mote — design 05) */}
+        <Link href={teamspacesHref}>
+          <SidebarNavItem isActive={pathname?.startsWith(teamspacesHref)}>
+            <div className="flex items-center gap-1.5 py-[1px]">
+              <Users className="size-4 flex-shrink-0" />
+              <p className="text-13 leading-5 font-medium">Teamspaces</p>
             </div>
           </SidebarNavItem>
         </Link>

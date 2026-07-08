@@ -156,6 +156,15 @@ export const coreRoutes: RouteConfigEntry[] = [
           "./(all)/[workspaceSlug]/(projects)/initiatives/(detail)/[initiativeId]/page.tsx"
         ),
 
+        // Teamspaces (mote — design 05) - List
+        route(":workspaceSlug/teamspaces", "./(all)/[workspaceSlug]/(projects)/teamspaces/(list)/page.tsx"),
+
+        // Teamspaces (mote — design 05) - Detail
+        route(
+          ":workspaceSlug/teamspaces/:teamId",
+          "./(all)/[workspaceSlug]/(projects)/teamspaces/(detail)/[teamId]/page.tsx"
+        ),
+
         // Project Detail
         layout("./(all)/[workspaceSlug]/(projects)/projects/(detail)/[projectId]/layout.tsx", [
           // Project Overview

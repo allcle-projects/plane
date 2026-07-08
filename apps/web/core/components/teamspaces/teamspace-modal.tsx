@@ -1,0 +1,158 @@
+/**
+ * Copyright (c) 2023-present Plane Software, Inc. and contributors
+ * SPDX-License-Identifier: AGPL-3.0-only
+ * See the LICENSE file for details.
+ */
+
+// Teamspaces — mote.
+// See docs/mote-design/05-teamspaces-access.md, section 1.
+//
+// Create / edit editor for a Teamspace: name, description and an optional lead.
+// Mirrors the mote Initiative modal shape.
+
+import { useEffect, useState } from "react";
+import { observer } from "mobx-react";
+// plane imports
+import { TOAST_TYPE, setToast } from "@plane/propel/toast";
+import { Button, EModalWidth, Input, ModalCore } from "@plane/ui";
+// components
+import { MemberDropdown } from "@/components/dropdowns/member/dropdown";
+// plane web imports
+import { useTeamspaces } from "@/plane-web/hooks/store/use-teamspaces";
+import type { TTeam } from "@/plane-web/types/teamspaces";
+
+type TTeamspaceModalProps = {
+  isOpen: boolean;
+  workspaceSlug: string;
+  teamId?: string | null;
+  handleClose: () => void;
+};
+
+type TFormState = {
+  name: string;
+  description: string;
+  lead: string | null;
+};
+
+const DEFAULT_FORM: TFormState = {
+  name: "",
+  description: "",
+  lead: null,
+};
+
+export const TeamspaceModal = observer(function TeamspaceModal(props: TTeamspaceModalProps) {
+  const { isOpen, workspaceSlug, teamId, handleClose } = props;
+  // store hooks
+  const { getTeamById, createTeam, updateTeam } = useTeamspaces();
+  // state
+  const [form, setForm] = useState<TFormState>(DEFAULT_FORM);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const existing = teamId ? getTeamById(teamId) : undefined;
+
+  // seed the form when opening (edit -> hydrate, create -> defaults)
+  useEffect(() => {
+    if (!isOpen) return;
+    if (existing) {
+      setForm({
+        name: existing.name ?? "",
+        description: existing.description ?? "",
+        lead: existing.lead ?? null,
+      });
+    } else {
+      setForm(DEFAULT_FORM);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, teamId]);
+
+  const setField = <K extends keyof TFormState>(key: K, value: TFormState[K]) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
+
+  const onSubmit = async () => {
+    if (!form.name.trim()) {
+      setToast({ type: TOAST_TYPE.ERROR, title: "Error!", message: "Name is required." });
+      return;
+    }
+
+    const payload: Partial<TTeam> = {
+      name: form.name.trim(),
+      description: form.description.trim(),
+      lead: form.lead,
+    };
+
+    try {
+      setIsSubmitting(true);
+      if (teamId) {
+        await updateTeam(workspaceSlug, teamId, payload);
+        setToast({ type: TOAST_TYPE.SUCCESS, title: "Success!", message: "Teamspace updated." });
+      } else {
+        await createTeam(workspaceSlug, payload);
+        setToast({ type: TOAST_TYPE.SUCCESS, title: "Success!", message: "Teamspace created." });
+      }
+      handleClose();
+    } catch (error) {
+      const err = error as { data?: { error?: string } };
+      setToast({
+        type: TOAST_TYPE.ERROR,
+        title: "Error!",
+        message: err?.data?.error ?? "Teamspace could not be saved. Please try again.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <ModalCore isOpen={isOpen} handleClose={handleClose} width={EModalWidth.XXL}>
+      <div className="flex flex-col gap-4 p-5">
+        <h3 className="text-lg font-medium text-primary">{teamId ? "Edit teamspace" : "New teamspace"}</h3>
+
+        {/* Name */}
+        <div className="flex flex-col gap-1">
+          <label className="text-sm text-secondary">Name</label>
+          <Input
+            type="text"
+            value={form.name}
+            onChange={(e) => setField("name", e.target.value)}
+            placeholder="Platform team"
+            className="w-full"
+          />
+        </div>
+
+        {/* Description */}
+        <div className="flex flex-col gap-1">
+          <label className="text-sm text-secondary">Description (optional)</label>
+          <textarea
+            value={form.description}
+            onChange={(e) => setField("description", e.target.value)}
+            placeholder="What this teamspace is about"
+            rows={3}
+            className="w-full resize-none rounded-md border border-subtle bg-transparent px-3 py-2 text-sm text-primary outline-none focus:border-accent-primary"
+          />
+        </div>
+
+        {/* Lead */}
+        <div className="flex flex-col gap-1">
+          <label className="text-sm text-secondary">Lead (optional)</label>
+          <MemberDropdown
+            value={form.lead}
+            onChange={(value) => setField("lead", value)}
+            multiple={false}
+            buttonVariant="border-with-text"
+            placeholder="Select lead"
+          />
+        </div>
+
+        {/* Actions */}
+        <div className="mt-2 flex items-center justify-end gap-2">
+          <Button variant="neutral-primary" size="sm" onClick={handleClose} disabled={isSubmitting}>
+            Cancel
+          </Button>
+          <Button variant="primary" size="sm" onClick={() => void onSubmit()} loading={isSubmitting}>
+            {teamId ? "Update" : "Create"}
+          </Button>
+        </div>
+      </div>
+    </ModalCore>
+  );
+});
