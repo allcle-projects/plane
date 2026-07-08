@@ -2,12 +2,12 @@
 
 > 대상: `plane.motemote.co.kr` (CE v1.3.1 fork, branch `mote`).
 > 로드맵 전체는 [`00-MASTER-ROADMAP.md`](./00-MASTER-ROADMAP.md) 참조. 이 문서는 **어디까지 했고 무엇이 남았는지**의 정본.
-> 배포 상태: **백엔드 `v1.3.1-mote.35` + 프론트 `v1.3.1-mote.35` + space `v1.3.1-space.2`** (server3 `/srv/shared/stack/plane-server3/`, compose.override 태그).
+> 배포 상태: **백엔드 `v1.3.1-mote.36` + 프론트 `v1.3.1-mote.36` + space `v1.3.1-space.2`** (server3 `/srv/shared/stack/plane-server3/`, compose.override 태그).
 
-## 요약: 로드맵 24개 기능 중 대략 절반 완료
+## 요약 (2026-07-09): 로드맵 핵심 유료기능 전량 자체구현 완료 🎉
 
-문서 **03(Work Item Power) 전량 완료**, 문서 02·05 부분 완료, 문서 **04·06 거의 미착수**.
-남은 대형(XL) 기능: **Custom RBAC**(맨 마지막) + Integrations · Importers (Enhanced Search는 이미 완료—mote.6/0124).
+문서 **02(Wiki/Publishing)·03(Work Item Power)·04(Planning) 전량 완료** + 문서 **05(Teamspaces·Custom RBAC) 완료** + 문서 **06(Automations·Enhanced Search) 완료**. XL 4종(Custom Fields·Initiatives·Teamspaces·Custom RBAC) 모두 완결.
+남은 것(비핵심/후속): Integrations(task-bot 웹훅 방식 권고) · Importers(CSV/Notion) · Guest 좌석비율(생략권고) · Customers/인테이크 라우팅 · Page Comments 인라인 앵커(XL) · Teamspaces P3 팀뷰/페이지 · Custom RBAC 게이트 전환(per-gate).
 
 ## ✅ 완료 (배포·검증)
 
@@ -34,8 +34,9 @@
 | 02 | **Publish Views** (P1 백엔드·P2 프론트+space) | mote.33/space.2 | PLANE-26 | DeployBoard(view) additive·마이그0. anon /spaces/views/&lt;anchor&gt; 이슈 렌더. 회귀0 |
 | 06 | **Automations**(규칙엔진) (P1 백엔드·P2 프론트) | mote.34 | PLANE-40 | AutomationRule+Log(마이그0140). issue_activities 핫패스 훅→celery evaluate_automations(루프가드 is_automation). 설정탭 "Custom automations" rule-builder. e2e 7/7 |
 | 05 | **Teamspaces** (P1 백엔드·P2 프론트) | mote.35 | PLANE-41 | orphan Team 재사용+TeamMember/TeamProject(마이그0141). CRUD·멤버/프로젝트 조인·work-item 피드(액세스 스코프). 사이드바 nav+list/detail(멤버·프로젝트·work-items). 생성자 자동멤버. e2e 16/16. 남은=팀뷰/페이지(P3)·공개v1(P4) |
+| 05 | **Custom RBAC** (P1 백엔드·P2 프론트) | mote.36 | PLANE-41 | Permission(16키)+Role(is_system Admin/Member/Guest+base_role)+RoleAssignment(마이그0142, ws당 시드). **additive resolver**(int롤 UNION 커스텀롤, 무assign=int과 동일—무회귀). allow_permission `permission_key=` 옵트인(기본None=기존불변). 설정 Roles&Permissions(권한매트릭스). e2e 13/13(특성화). 남은=개별 게이트를 resolver로 전환(신중, per-gate) |
 
-**⇒ 문서 03(Work Item Power) 전량 완결 + 문서 04 전량 완결(§5 CE기존) + 문서 02 Collections·Shared Pages·Publish Views 완결 + 문서 06 Automations 완결 + 문서 05 Teamspaces(P1+P2) 완결.**
+**⇒ 문서 03(Work Item Power) 전량 완결 + 문서 04 전량 완결(§5 CE기존) + 문서 02 Collections·Shared Pages·Publish Views 완결 + 문서 06 Automations·Enhanced Search 완결 + 문서 05 Teamspaces·Custom RBAC 완결. 🎉 로드맵 핵심 유료기능 전량 자체구현 완료.**
 
 ### 2026-07-08 심층검증에서 잡은 실결함 3건 (전부 수정·재검증)
 운영에 갈 뻔한 결함을 단위검증이 아닌 **e2e·인증 실경로 검증**이 발견:
@@ -64,7 +65,7 @@
 | 04 | ~~Updates(상태 포스트)~~ | M | ✅ 완료 (mote.22–23, PLANE-29) |
 | 04 | ~~Project/Module Overview 분석~~ | S–M | ✅ CE 기존구현(검증) — ProjectModuleOverview 컴포넌트+advance-analytics 엔드포인트. 프로젝트/모듈 overview 페이지 실브라우저 렌더 확인(인사이트카드+Created vs Resolved+Customized Insights). 신규개발 불필요 |
 | 05 | ~~Teamspaces~~ | XL | ✅ P1+P2 완료 (mote.35, PLANE-41) — orphan Team 재사용+TeamMember/TeamProject(마이그0141)·CRUD·work-item 피드·사이드바 nav·list/detail. 남은=팀뷰/페이지(P3)·공개v1(P4) |
-| 05 | **Custom RBAC** | XL | 미착수 (**맨 마지막**, 최대 blast radius) |
+| 05 | ~~Custom RBAC~~ | XL | ✅ P1(백엔드)+P2(프론트) 완료 (mote.36, PLANE-41) — Permission/Role/RoleAssignment(마이그0142)·additive resolver(무회귀)·설정 Roles&Permissions. 남은=개별 게이트를 resolver로 전환(per-gate, 신중) |
 | 05 | Guest 좌석비율(1:5) | S | 미착수(생략 권고) |
 | 05 | Customers + 인테이크 라우팅 | M–L | 미착수 |
 | 06 | 통합 Slack/GitHub/Sentry/GitLab | S~M | 미착수(아웃바운드 웹훅+task-bot 방식 권고) |
@@ -78,7 +79,7 @@
 CE v1.3.1이 설계 작성 시점보다 최신 → 일부 "남은" 기능이 이미 존재. 직접 감사 결과:
 - **✅ 이미 CE 구현(빌드 불필요)**: Estimates TIME 타입(`EstimateType.TIME` 모델+프론트 enum), Project/Module Overview 분석(§5).
 - **🟡 부분 존재**: Importers(`db/models/importer.py`), Integrations(`db/models/integration/`+Slack/GitHub sync 엔드포인트), Shared Pages(page.access pub/priv+is_global 있음, 공개링크 publish 부재), Enhanced Search(icontains 기반; GinIndex+gin_trgm_ops 인프라는 Project/Issue name에 존재하나 trigram 랭킹 미사용).
-- **🔴 완전 신규(net-new 빌드 필요)**: ~~Collections~~✅, ~~Publish Views~~✅(DeployBoard anchor 재사용), ~~Automations~~✅(규칙엔진, mote.34), ~~Teamspaces~~✅(orphan Team 재사용+TeamMember/TeamProject, mote.35 P1+P2), Custom RBAC(role/permission 모델 없음—코드기반 permissions, **맨 마지막**).
+- **🔴 완전 신규(net-new 빌드 완료)**: ~~Collections~~✅, ~~Publish Views~~✅(DeployBoard anchor 재사용), ~~Automations~~✅(규칙엔진, mote.34), ~~Teamspaces~~✅(orphan Team 재사용, mote.35 P1+P2), ~~Custom RBAC~~✅(Permission/Role/RoleAssignment+additive resolver, mote.36 P1+P2). **전 net-new 대형기능 완료.**
 
 ## 다음 착수 권장 (로드맵 Phase 3~4)
 1. **Phase 3 콘텐츠·계획**: Shared Pages·Collections·Publish Views(위키 토대 완성) → Milestones·Project States·Updates.
