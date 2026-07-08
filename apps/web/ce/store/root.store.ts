@@ -6,6 +6,8 @@
 
 // store
 import { CoreRootStore } from "@/store/root.store";
+import type { IAutomationStore } from "./automation/automation.store";
+import { AutomationStore } from "./automation/automation.store";
 import type { IInitiativeStore } from "./initiative/initiative.store";
 import { InitiativeStore } from "./initiative/initiative.store";
 import type { IMilestoneStore } from "./milestone/milestone.store";
@@ -24,6 +26,7 @@ import type { IWorkspaceProjectStateStore } from "./workspace-project-state/proj
 import { WorkspaceProjectStateStore } from "./workspace-project-state/project-state.store";
 
 export class RootStore extends CoreRootStore {
+  automationStore: IAutomationStore;
   timelineStore: ITimelineStore;
   templateStore: ITemplateStore;
   recurringIssueStore: IRecurringIssueStore;
@@ -36,6 +39,7 @@ export class RootStore extends CoreRootStore {
   constructor() {
     super();
 
+    this.automationStore = new AutomationStore(this);
     this.timelineStore = new TimeLineStore(this);
     this.templateStore = new TemplateStore(this);
     this.recurringIssueStore = new RecurringIssueStore(this);
