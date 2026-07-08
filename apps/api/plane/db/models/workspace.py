@@ -263,9 +263,20 @@ class WorkspaceMemberInvite(BaseModel):
 
 
 class Team(BaseModel):
+    # Teamspaces — mote. See docs/mote-design/05-teamspaces-access.md, section 1.
+    # ``Team`` pre-existed as an orphan (unexported, unreferenced) CE model; we
+    # reuse it as the Teamspace scaffold and add a ``lead`` FK. Its ``teams``
+    # table already exists (0001_initial), so migrations produce a delta only.
     name = models.CharField(max_length=255, verbose_name="Team Name")
     description = models.TextField(verbose_name="Team Description", blank=True)
     workspace = models.ForeignKey(Workspace, on_delete=models.CASCADE, related_name="workspace_team")
+    lead = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="led_teams",
+    )
     logo_props = models.JSONField(default=dict)
 
     def __str__(self):
@@ -284,6 +295,65 @@ class Team(BaseModel):
         verbose_name = "Team"
         verbose_name_plural = "Teams"
         db_table = "teams"
+        ordering = ("-created_at",)
+
+
+class TeamMember(BaseModel):
+    # A user's membership in a Teamspace. This is an organizational overlay — it
+    # does NOT by itself grant project access (that stays on ProjectMember /
+    # WorkspaceMember rows). See design 05 §1.
+    team = models.ForeignKey("db.Team", on_delete=models.CASCADE, related_name="team_member")
+    member = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="member_team"
+    )
+    workspace = models.ForeignKey(
+        "db.Workspace", on_delete=models.CASCADE, related_name="workspace_team_member"
+    )
+
+    def __str__(self):
+        return f"{self.member.email} <{self.team.name}>"
+
+    class Meta:
+        unique_together = ["team", "member", "deleted_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["team", "member"],
+                condition=models.Q(deleted_at__isnull=True),
+                name="team_member_unique_team_member_when_deleted_at_null",
+            )
+        ]
+        verbose_name = "Team Member"
+        verbose_name_plural = "Team Members"
+        db_table = "team_members"
+        ordering = ("-created_at",)
+
+
+class TeamProject(BaseModel):
+    # A project bundled into a Teamspace. Enables the team-scoped work-item
+    # aggregation (union of issues across a team's projects). See design 05 §1.
+    team = models.ForeignKey("db.Team", on_delete=models.CASCADE, related_name="team_project")
+    project = models.ForeignKey(
+        "db.Project", on_delete=models.CASCADE, related_name="project_team"
+    )
+    workspace = models.ForeignKey(
+        "db.Workspace", on_delete=models.CASCADE, related_name="workspace_team_project"
+    )
+
+    def __str__(self):
+        return f"{self.project.name} <{self.team.name}>"
+
+    class Meta:
+        unique_together = ["team", "project", "deleted_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["team", "project"],
+                condition=models.Q(deleted_at__isnull=True),
+                name="team_project_unique_team_project_when_deleted_at_null",
+            )
+        ]
+        verbose_name = "Team Project"
+        verbose_name_plural = "Team Projects"
+        db_table = "team_projects"
         ordering = ("-created_at",)
 
 

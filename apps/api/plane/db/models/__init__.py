@@ -86,6 +86,9 @@ from .workspace import (
     WorkspaceUserLink,
     WorkspaceHomePreference,
     WorkspaceUserPreference,
+    Team,
+    TeamMember,
+    TeamProject,
 )
 
 from .favorite import UserFavorite

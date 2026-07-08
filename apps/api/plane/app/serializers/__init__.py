@@ -161,6 +161,12 @@ from .initiative import (
     InitiativeEpicSerializer,
 )
 
+from .team import (
+    TeamSerializer,
+    TeamMemberSerializer,
+    TeamProjectSerializer,
+)
+
 from .milestone import (
     MilestoneSerializer,
     MilestoneIssueSerializer,
