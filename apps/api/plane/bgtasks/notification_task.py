@@ -316,7 +316,13 @@ def notifications(
                 else:
                     sender = "in_app:issue_activities:subscribed"
 
-                preference = UserNotificationPreference.objects.get(user_id=subscriber)
+                # get_or_create instead of get: a subscriber without a preference
+                # row (e.g. migrated/imported users) previously raised DoesNotExist,
+                # which the outer try/except swallowed and silently aborted the whole
+                # notification batch — nobody got notified. Self-heal with defaults.
+                preference, _ = UserNotificationPreference.objects.get_or_create(
+                    user_id=subscriber
+                )
 
                 for issue_activity in issue_activities_created:
                     # If activity done in blocking then blocked by email should not go
@@ -464,7 +470,9 @@ def notifications(
 
             for mention_id in comment_mentions:
                 if mention_id != actor_id:
-                    preference = UserNotificationPreference.objects.get(user_id=mention_id)
+                    preference, _ = UserNotificationPreference.objects.get_or_create(
+                        user_id=mention_id
+                    )
                     for issue_activity in issue_activities_created:
                         notification = create_mention_notification(
                             project=project,
@@ -521,7 +529,9 @@ def notifications(
 
             for mention_id in new_mentions:
                 if mention_id != actor_id:
-                    preference = UserNotificationPreference.objects.get(user_id=mention_id)
+                    preference, _ = UserNotificationPreference.objects.get_or_create(
+                        user_id=mention_id
+                    )
                     if (
                         last_activity is not None
                         and last_activity.field == "description"
