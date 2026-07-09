@@ -18,7 +18,7 @@ import { computedFn } from "mobx-utils";
 // services
 import teamService from "@/services/team.service";
 // plane web types
-import type { TTeam, TTeamMember, TTeamProject } from "@/plane-web/types/teamspaces";
+import type { TTeam, TTeamMember, TTeamProject, TTeamEntity } from "@/plane-web/types/teamspaces";
 // store
 import type { CoreRootStore } from "@/store/root.store";
 
@@ -29,6 +29,8 @@ export interface ITeamspaceStore {
   membersMap: Record<string, TTeamMember[]>;
   projectsMap: Record<string, TTeamProject[]>;
   workItemsMap: Record<string, unknown[]>;
+  viewsMap: Record<string, TTeamEntity[]>;
+  pagesMap: Record<string, TTeamEntity[]>;
   fetchedMap: Record<string, boolean>;
   // computed actions
   getTeamById: (teamId: string) => TTeam | undefined;
@@ -37,12 +39,20 @@ export interface ITeamspaceStore {
   getTeamMembers: (teamId: string) => TTeamMember[];
   getTeamProjects: (teamId: string) => TTeamProject[];
   getTeamWorkItems: (teamId: string) => unknown[];
+  getTeamViews: (teamId: string) => TTeamEntity[];
+  getTeamPages: (teamId: string) => TTeamEntity[];
   // fetch actions
   fetchTeams: (workspaceSlug: string) => Promise<TTeam[] | undefined>;
   fetchTeamById: (workspaceSlug: string, teamId: string) => Promise<TTeam | undefined>;
   fetchTeamMembers: (workspaceSlug: string, teamId: string) => Promise<TTeamMember[] | undefined>;
   fetchTeamProjects: (workspaceSlug: string, teamId: string) => Promise<TTeamProject[] | undefined>;
   fetchTeamWorkItems: (workspaceSlug: string, teamId: string) => Promise<unknown[] | undefined>;
+  fetchTeamViews: (workspaceSlug: string, teamId: string) => Promise<TTeamEntity[] | undefined>;
+  fetchTeamPages: (workspaceSlug: string, teamId: string) => Promise<TTeamEntity[] | undefined>;
+  createTeamView: (workspaceSlug: string, teamId: string, name: string) => Promise<TTeamEntity | undefined>;
+  deleteTeamView: (workspaceSlug: string, teamId: string, viewId: string) => Promise<void>;
+  createTeamPage: (workspaceSlug: string, teamId: string, name: string) => Promise<TTeamEntity | undefined>;
+  deleteTeamPage: (workspaceSlug: string, teamId: string, pageId: string) => Promise<void>;
   // CRUD actions
   createTeam: (workspaceSlug: string, payload: Partial<TTeam>) => Promise<TTeam | undefined>;
   updateTeam: (workspaceSlug: string, teamId: string, payload: Partial<TTeam>) => Promise<TTeam | undefined>;
@@ -64,6 +74,8 @@ export class TeamspaceStore implements ITeamspaceStore {
   membersMap: Record<string, TTeamMember[]> = {};
   projectsMap: Record<string, TTeamProject[]> = {};
   workItemsMap: Record<string, unknown[]> = {};
+  viewsMap: Record<string, TTeamEntity[]> = {};
+  pagesMap: Record<string, TTeamEntity[]> = {};
   fetchedMap: Record<string, boolean> = {};
   // root store
   rootStore: CoreRootStore;
@@ -76,6 +88,8 @@ export class TeamspaceStore implements ITeamspaceStore {
       membersMap: observable,
       projectsMap: observable,
       workItemsMap: observable,
+      viewsMap: observable,
+      pagesMap: observable,
       fetchedMap: observable,
       // fetch actions
       fetchTeams: action,
@@ -83,6 +97,8 @@ export class TeamspaceStore implements ITeamspaceStore {
       fetchTeamMembers: action,
       fetchTeamProjects: action,
       fetchTeamWorkItems: action,
+      fetchTeamViews: action,
+      fetchTeamPages: action,
       // CRUD actions
       createTeam: action,
       updateTeam: action,
@@ -91,6 +107,10 @@ export class TeamspaceStore implements ITeamspaceStore {
       removeTeamMember: action,
       addTeamProjects: action,
       removeTeamProject: action,
+      createTeamView: action,
+      deleteTeamView: action,
+      createTeamPage: action,
+      deleteTeamPage: action,
     });
     this.rootStore = _rootStore;
   }
@@ -132,6 +152,16 @@ export class TeamspaceStore implements ITeamspaceStore {
    * @description work-item feed for a team
    */
   getTeamWorkItems = computedFn((teamId: string) => this.workItemsMap?.[teamId] ?? []);
+
+  /**
+   * @description team-scoped views (phase 3)
+   */
+  getTeamViews = computedFn((teamId: string) => this.viewsMap?.[teamId] ?? []);
+
+  /**
+   * @description team-scoped pages (phase 3)
+   */
+  getTeamPages = computedFn((teamId: string) => this.pagesMap?.[teamId] ?? []);
 
   /**
    * @description fetches all teams for a workspace
@@ -308,5 +338,65 @@ export class TeamspaceStore implements ITeamspaceStore {
       );
     });
     await this.fetchTeamById(workspaceSlug, teamId);
+  };
+
+  // Views / pages (phase 3) -------------------------------------------------
+
+  fetchTeamViews = async (workspaceSlug: string, teamId: string): Promise<TTeamEntity[] | undefined> => {
+    const response = await teamService.getTeamViews(workspaceSlug, teamId);
+    runInAction(() => {
+      set(this.viewsMap, [teamId], response ?? []);
+    });
+    return response;
+  };
+
+  fetchTeamPages = async (workspaceSlug: string, teamId: string): Promise<TTeamEntity[] | undefined> => {
+    const response = await teamService.getTeamPages(workspaceSlug, teamId);
+    runInAction(() => {
+      set(this.pagesMap, [teamId], response ?? []);
+    });
+    return response;
+  };
+
+  createTeamView = async (workspaceSlug: string, teamId: string, name: string): Promise<TTeamEntity | undefined> => {
+    const response = await teamService.createTeamView(workspaceSlug, teamId, name);
+    if (response) {
+      runInAction(() => {
+        set(this.viewsMap, [teamId], [...(this.viewsMap?.[teamId] ?? []), response]);
+      });
+    }
+    return response;
+  };
+
+  deleteTeamView = async (workspaceSlug: string, teamId: string, viewId: string): Promise<void> => {
+    await teamService.deleteTeamView(workspaceSlug, teamId, viewId);
+    runInAction(() => {
+      set(
+        this.viewsMap,
+        [teamId],
+        (this.viewsMap?.[teamId] ?? []).filter((row) => row.id !== viewId)
+      );
+    });
+  };
+
+  createTeamPage = async (workspaceSlug: string, teamId: string, name: string): Promise<TTeamEntity | undefined> => {
+    const response = await teamService.createTeamPage(workspaceSlug, teamId, name);
+    if (response) {
+      runInAction(() => {
+        set(this.pagesMap, [teamId], [...(this.pagesMap?.[teamId] ?? []), response]);
+      });
+    }
+    return response;
+  };
+
+  deleteTeamPage = async (workspaceSlug: string, teamId: string, pageId: string): Promise<void> => {
+    await teamService.deleteTeamPage(workspaceSlug, teamId, pageId);
+    runInAction(() => {
+      set(
+        this.pagesMap,
+        [teamId],
+        (this.pagesMap?.[teamId] ?? []).filter((row) => row.id !== pageId)
+      );
+    });
   };
 }

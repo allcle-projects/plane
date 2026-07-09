@@ -15,7 +15,7 @@ import { useState } from "react";
 import { observer } from "mobx-react";
 import { useParams, useRouter } from "next/navigation";
 import useSWR from "swr";
-import { FolderKanban, Pencil, Trash2, Users, X } from "lucide-react";
+import { FileText, FolderKanban, Layers, Pencil, Plus, Trash2, Users, X } from "lucide-react";
 // plane imports
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import { Avatar, Button } from "@plane/ui";
@@ -58,11 +58,21 @@ export const TeamspaceDetailRoot = observer(function TeamspaceDetailRoot(props: 
     addTeamProjects,
     removeTeamProject,
     deleteTeam,
+    getTeamViews,
+    getTeamPages,
+    fetchTeamViews,
+    fetchTeamPages,
+    createTeamView,
+    deleteTeamView,
+    createTeamPage,
+    deleteTeamPage,
   } = useTeamspaces();
   const { getUserDetails } = useMember();
   const { getProjectById } = useProject();
   // state
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [newViewName, setNewViewName] = useState("");
+  const [newPageName, setNewPageName] = useState("");
 
   useSWR(slug && teamId ? `TEAMSPACE_${slug}_${teamId}` : null, slug && teamId ? () => fetchTeamById(slug, teamId) : null);
   useSWR(
@@ -77,9 +87,19 @@ export const TeamspaceDetailRoot = observer(function TeamspaceDetailRoot(props: 
     slug && teamId ? `TEAMSPACE_WORKITEMS_${slug}_${teamId}` : null,
     slug && teamId ? () => fetchTeamWorkItems(slug, teamId) : null
   );
+  useSWR(
+    slug && teamId ? `TEAMSPACE_VIEWS_${slug}_${teamId}` : null,
+    slug && teamId ? () => fetchTeamViews(slug, teamId) : null
+  );
+  useSWR(
+    slug && teamId ? `TEAMSPACE_PAGES_${slug}_${teamId}` : null,
+    slug && teamId ? () => fetchTeamPages(slug, teamId) : null
+  );
 
   const team = getTeamById(teamId);
   const workItems = getTeamWorkItems(teamId) as TWorkItem[];
+  const views = getTeamViews(teamId);
+  const pages = getTeamPages(teamId);
 
   if (!team) {
     return (
@@ -119,6 +139,28 @@ export const TeamspaceDetailRoot = observer(function TeamspaceDetailRoot(props: 
       router.push(`/${slug}/teamspaces`);
     } catch {
       setToast({ type: TOAST_TYPE.ERROR, title: "Error!", message: "Could not delete teamspace." });
+    }
+  };
+
+  const onCreateView = async () => {
+    const name = newViewName.trim();
+    if (!name) return;
+    try {
+      await createTeamView(slug, teamId, name);
+      setNewViewName("");
+    } catch {
+      setToast({ type: TOAST_TYPE.ERROR, title: "Error!", message: "Could not create view." });
+    }
+  };
+
+  const onCreatePage = async () => {
+    const name = newPageName.trim();
+    if (!name) return;
+    try {
+      await createTeamPage(slug, teamId, name);
+      setNewPageName("");
+    } catch {
+      setToast({ type: TOAST_TYPE.ERROR, title: "Error!", message: "Could not create page." });
     }
   };
 
@@ -237,6 +279,92 @@ export const TeamspaceDetailRoot = observer(function TeamspaceDetailRoot(props: 
               workItems.slice(0, 100).map((item) => (
                 <div key={item.id} className="flex items-center gap-2 px-3 py-2 text-sm text-primary">
                   <span className="truncate">{item.name}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+
+        {/* Views (phase 3) */}
+        <section className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <h4 className="flex items-center gap-1.5 text-sm font-medium text-secondary">
+              <Layers className="size-4" /> Views ({views.length})
+            </h4>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="text"
+                value={newViewName}
+                onChange={(e) => setNewViewName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && void onCreateView()}
+                placeholder="New view name"
+                className="rounded-md border border-subtle bg-transparent px-2 py-1 text-sm text-primary outline-none focus:border-accent-primary"
+              />
+              <Button variant="neutral-primary" size="sm" prependIcon={<Plus className="size-3.5" />} onClick={() => void onCreateView()}>
+                Add
+              </Button>
+            </div>
+          </div>
+          <div className="flex flex-col divide-y divide-subtle rounded-md border border-subtle">
+            {views.length === 0 ? (
+              <span className="px-3 py-2 text-sm text-tertiary">No team views yet.</span>
+            ) : (
+              views.map((v) => (
+                <div key={v.id} className="flex items-center justify-between px-3 py-2">
+                  <span className="flex items-center gap-2 text-sm text-primary">
+                    <Layers className="size-3.5 text-tertiary" /> {v.name}
+                  </span>
+                  <button
+                    type="button"
+                    className="rounded-sm p-1 text-tertiary hover:bg-layer-1 hover:text-primary"
+                    onClick={() => void deleteTeamView(slug, teamId, v.id)}
+                    aria-label="Remove view"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+
+        {/* Pages (phase 3) */}
+        <section className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <h4 className="flex items-center gap-1.5 text-sm font-medium text-secondary">
+              <FileText className="size-4" /> Pages ({pages.length})
+            </h4>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="text"
+                value={newPageName}
+                onChange={(e) => setNewPageName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && void onCreatePage()}
+                placeholder="New page name"
+                className="rounded-md border border-subtle bg-transparent px-2 py-1 text-sm text-primary outline-none focus:border-accent-primary"
+              />
+              <Button variant="neutral-primary" size="sm" prependIcon={<Plus className="size-3.5" />} onClick={() => void onCreatePage()}>
+                Add
+              </Button>
+            </div>
+          </div>
+          <div className="flex flex-col divide-y divide-subtle rounded-md border border-subtle">
+            {pages.length === 0 ? (
+              <span className="px-3 py-2 text-sm text-tertiary">No team pages yet.</span>
+            ) : (
+              pages.map((p) => (
+                <div key={p.id} className="flex items-center justify-between px-3 py-2">
+                  <span className="flex items-center gap-2 text-sm text-primary">
+                    <FileText className="size-3.5 text-tertiary" /> {p.name || "Untitled"}
+                  </span>
+                  <button
+                    type="button"
+                    className="rounded-sm p-1 text-tertiary hover:bg-layer-1 hover:text-primary"
+                    onClick={() => void deleteTeamPage(slug, teamId, p.id)}
+                    aria-label="Remove page"
+                  >
+                    <X className="size-3.5" />
+                  </button>
                 </div>
               ))
             )}

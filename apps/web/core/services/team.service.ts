@@ -13,7 +13,7 @@
 
 import { API_BASE_URL } from "@plane/constants";
 // plane web types
-import type { TTeam, TTeamMember, TTeamProject } from "@/plane-web/types/teamspaces";
+import type { TTeam, TTeamMember, TTeamProject, TTeamEntity } from "@/plane-web/types/teamspaces";
 // services
 import { APIService } from "@/services/api.service";
 
@@ -143,6 +143,62 @@ export class TeamService extends APIService {
     try {
       const { data } = await this.get(`/api/workspaces/${workspaceSlug}/teamspaces/${teamId}/work-items/`);
       return data || undefined;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Views (phase 3) ---------------------------------------------------------
+
+  async getTeamViews(workspaceSlug: string, teamId: string): Promise<TTeamEntity[] | undefined> {
+    try {
+      const { data } = await this.get(`/api/workspaces/${workspaceSlug}/teamspaces/${teamId}/views/`);
+      return data || undefined;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async createTeamView(workspaceSlug: string, teamId: string, name: string): Promise<TTeamEntity | undefined> {
+    try {
+      const { data } = await this.post(`/api/workspaces/${workspaceSlug}/teamspaces/${teamId}/views/`, { name });
+      return data || undefined;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async deleteTeamView(workspaceSlug: string, teamId: string, viewId: string): Promise<void> {
+    try {
+      await this.delete(`/api/workspaces/${workspaceSlug}/teamspaces/${teamId}/views/${viewId}/`);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Pages (phase 3) ---------------------------------------------------------
+
+  async getTeamPages(workspaceSlug: string, teamId: string): Promise<TTeamEntity[] | undefined> {
+    try {
+      const { data } = await this.get(`/api/workspaces/${workspaceSlug}/teamspaces/${teamId}/pages/`);
+      return data || undefined;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async createTeamPage(workspaceSlug: string, teamId: string, name: string): Promise<TTeamEntity | undefined> {
+    try {
+      const { data } = await this.post(`/api/workspaces/${workspaceSlug}/teamspaces/${teamId}/pages/`, { name });
+      return data || undefined;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async deleteTeamPage(workspaceSlug: string, teamId: string, pageId: string): Promise<void> {
+    try {
+      await this.delete(`/api/workspaces/${workspaceSlug}/teamspaces/${teamId}/pages/${pageId}/`);
     } catch (error) {
       throw error;
     }

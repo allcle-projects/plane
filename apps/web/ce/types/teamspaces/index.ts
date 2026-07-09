@@ -53,3 +53,13 @@ export type TTeamProject = {
   created_by?: string;
   updated_by?: string;
 };
+
+// Phase 3: a team-scoped view or page (both carry at least id + name + team).
+export type TTeamEntity = {
+  id: string;
+  name: string;
+  team?: string | null;
+  workspace?: string;
+  created_at?: string;
+  updated_at?: string;
+};
