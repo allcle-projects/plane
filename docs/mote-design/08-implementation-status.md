@@ -2,12 +2,12 @@
 
 > 대상: `plane.motemote.co.kr` (CE v1.3.1 fork, branch `mote`).
 > 로드맵 전체는 [`00-MASTER-ROADMAP.md`](./00-MASTER-ROADMAP.md) 참조. 이 문서는 **어디까지 했고 무엇이 남았는지**의 정본.
-> 배포 상태: **백엔드 `v1.3.1-mote.36` + 프론트 `v1.3.1-mote.36` + space `v1.3.1-space.2`** (server3 `/srv/shared/stack/plane-server3/`, compose.override 태그).
+> 배포 상태: **백엔드 `v1.3.1-mote.38` + 프론트 `v1.3.1-mote.38` + space `v1.3.1-space.2`** (server3 `/srv/shared/stack/plane-server3/`, compose.override 태그). 마이그 head 0143.
 
 ## 요약 (2026-07-09): 로드맵 핵심 유료기능 전량 자체구현 완료 🎉
 
 문서 **02(Wiki/Publishing)·03(Work Item Power)·04(Planning) 전량 완료** + 문서 **05(Teamspaces·Custom RBAC) 완료** + 문서 **06(Automations·Enhanced Search) 완료**. XL 4종(Custom Fields·Initiatives·Teamspaces·Custom RBAC) 모두 완결.
-남은 것(비핵심/후속): Integrations(task-bot 웹훅 방식 권고) · Importers(CSV/Notion) · Guest 좌석비율(생략권고) · Customers/인테이크 라우팅 · Page Comments 인라인 앵커(XL) · Teamspaces P3 팀뷰/페이지 · Custom RBAC 게이트 전환(per-gate).
+남은 것(비핵심/후속): Integrations(task-bot 웹훅 방식 권고) · Notion/Jira importer(CSV는 완료) · Guest 좌석비율(생략권고) · Customers/인테이크 라우팅 · Page Comments 인라인 앵커(XL) · Teamspaces P4(공개 v1) · Custom RBAC 나머지 게이트(Page/Project=class-level permission_classes 경로 전환).
 
 ## ✅ 완료 (배포·검증)
 
@@ -34,7 +34,11 @@
 | 02 | **Publish Views** (P1 백엔드·P2 프론트+space) | mote.33/space.2 | PLANE-26 | DeployBoard(view) additive·마이그0. anon /spaces/views/&lt;anchor&gt; 이슈 렌더. 회귀0 |
 | 06 | **Automations**(규칙엔진) (P1 백엔드·P2 프론트) | mote.34 | PLANE-40 | AutomationRule+Log(마이그0140). issue_activities 핫패스 훅→celery evaluate_automations(루프가드 is_automation). 설정탭 "Custom automations" rule-builder. e2e 7/7 |
 | 05 | **Teamspaces** (P1 백엔드·P2 프론트) | mote.35 | PLANE-41 | orphan Team 재사용+TeamMember/TeamProject(마이그0141). CRUD·멤버/프로젝트 조인·work-item 피드(액세스 스코프). 사이드바 nav+list/detail(멤버·프로젝트·work-items). 생성자 자동멤버. e2e 16/16. 남은=팀뷰/페이지(P3)·공개v1(P4) |
-| 05 | **Custom RBAC** (P1 백엔드·P2 프론트) | mote.36 | PLANE-41 | Permission(16키)+Role(is_system Admin/Member/Guest+base_role)+RoleAssignment(마이그0142, ws당 시드). **additive resolver**(int롤 UNION 커스텀롤, 무assign=int과 동일—무회귀). allow_permission `permission_key=` 옵트인(기본None=기존불변). 설정 Roles&Permissions(권한매트릭스). e2e 13/13(특성화). 남은=개별 게이트를 resolver로 전환(신중, per-gate) |
+| 05 | **Custom RBAC** (P1 백엔드·P2 프론트) | mote.36 | PLANE-41 | Permission(16키)+Role(is_system Admin/Member/Guest+base_role)+RoleAssignment(마이그0142, ws당 시드). **additive resolver**(int롤 UNION 커스텀롤, 무assign=int과 동일—무회귀). allow_permission `permission_key=` 옵트인(기본None=기존불변). 설정 Roles&Permissions(권한매트릭스). e2e 13/13(특성화). |
+| 05 | **Custom RBAC 게이트 적용** | mote.37 | PLANE-41 | 실 게이트를 resolver로 전환(additive opt-in): IssueViewSet create/update/destroy(issue.create/update/delete)+StateViewSet create/mark_as_default/destroy(issue.state.manage). e2e 7/7(guest baseline403→커스텀롤 grant201→revoke403→admin 무회귀). 라이브 무회귀 5/5. Page/Project는 class-level permission_classes라 후속 |
+| 06 | **알림 버그 fix** | mote.37 | — | 코멘트→알림함 미발화 근본원인=notification_task가 recipient의 UserNotificationPreference를 `.get()`→pref 없는 유저(임포트/마이그) DoesNotExist→outer try/except가 삼켜 **배치 전체 알림 소실**. get_or_create 3곳(subscriber+mention2)으로 self-heal. 재현(+0)→fix(+1) 검증. 현 실유저 영향은 봇1만(무). |
+| 05 | **Teamspaces P3** (팀뷰/페이지) | mote.38 | PLANE-41 | IssueView·Page에 nullable team FK(마이그0143). TeamView/TeamPage 엔드포인트(GET/POST/DELETE). 팀상세에 Views·Pages 섹션(인라인 생성/삭제). e2e 9/9(팀뷰·페이지 CRUD+team FK)+브라우저(UI 생성확인) |
+| 06 | **CSV Importer** | mote.38 | — | POST import-csv/(멀티파트 file 또는 csv텍스트). 행당 IssueCreateSerializer(시퀀스·정렬·검증 정합). name/title/summary·description·priority·state(이름매칭) alias. 행별 에러 보고·5000행캡. work-items 헤더 Import 버튼+모달. issue.create 게이트 재사용. e2e 6/6(3생성·1에러·우선순위매핑·no-name-col 400)+브라우저 |
 
 **⇒ 문서 03(Work Item Power) 전량 완결 + 문서 04 전량 완결(§5 CE기존) + 문서 02 Collections·Shared Pages·Publish Views 완결 + 문서 06 Automations·Enhanced Search 완결 + 문서 05 Teamspaces·Custom RBAC 완결. 🎉 로드맵 핵심 유료기능 전량 자체구현 완료.**
 

@@ -11,14 +11,25 @@ Plane 유료(EE) 기능을 CE 포크 내부 구현(`ee/` 없이 `ce/**` alias + 
 
 | 서비스 | 태그 |
 |---|---|
-| web (frontend) | `v1.3.1-mote.36` |
-| api/worker/beat-worker/migrator (backend) | `v1.3.1-mote.36` |
+| web (frontend) | `v1.3.1-mote.38` |
+| api/worker/beat-worker/migrator (backend) | `v1.3.1-mote.38` |
 | space | `v1.3.1-space.2` |
 | admin | `v1.3.1-mote.8` |
 | live | `v1.3.1-mote.7` |
 | proxy | `v1.3.1-mote.1` |
 
-전 컨테이너 healthy. 마이그레이션 head = **0142_custom_rbac**.
+전 컨테이너 healthy. 마이그레이션 head = **0143_teamspace_views_pages**.
+
+### 후속 라운드 (mote.37 / mote.38)
+
+핵심 유료기능 완주 후 otro 요청으로 추가 진행:
+
+| 작업 | 릴리스 | 검증 |
+|---|---|---|
+| 알림함 미발화 버그 fix (`UserNotificationPreference.get()`→`get_or_create`, 배치 전체 소실 방지) | mote.37 | 재현(+0)→fix(+1) |
+| Custom RBAC 게이트 실적용 (issue create/update/delete·state manage → additive resolver) | mote.37 | e2e 7/7 + 라이브 무회귀 5/5 |
+| Teamspaces P3 (팀뷰·팀페이지: team FK on IssueView/Page, 마이그 0143, 팀상세 Views/Pages 섹션) | mote.38 | e2e 9/9 + 브라우저 |
+| CSV Importer (import-csv 엔드포인트 + work-items 헤더 Import 모달) | mote.38 | e2e 6/6 + 브라우저 |
 
 ## 이번 세션에 완료한 기능 (릴리스 · 티켓 · 검증)
 
