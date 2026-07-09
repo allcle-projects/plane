@@ -50,7 +50,7 @@ class ProjectPagePermission(BasePermission):
                 return self._has_private_page_action_access(request, slug, page, project_id)
 
         # Handle public page access
-        return self._has_public_page_action_access(request, role)
+        return self._has_public_page_action_access(request, role, slug, project_id)
 
     def _check_project_member_access(self, request, slug, project_id):
         """
@@ -130,15 +130,25 @@ class ProjectPagePermission(BasePermission):
         # Deny by default
         return False
 
-    def _has_public_page_action_access(self, request, role):
+    def _has_public_page_action_access(self, request, role, slug=None, project_id=None):
         """
         Check if the user has permission to access a public page
         and can perform operations on the page.
         """
         project_member_exists = self._check_project_action_access(request, role)
-        if not project_member_exists:
+        if project_member_exists:
+            return True
+
+        # Custom RBAC (mote) — additive resolver fallback for mutating methods.
+        # Only WIDENS access for users holding a custom role with the page key;
+        # the int-role decision above is unchanged. Read methods keep their
+        # existing behavior (a role is already required to reach here).
+        if request.method in SAFE_METHODS or slug is None:
             return False
-        return True
+        from plane.app.permissions.resolver import has_permission as _resolver_has
+
+        key = "page.create" if request.method == "POST" else "page.manage"
+        return _resolver_has(request.user, slug, key, project_id=project_id)
 
 
 class WorkspacePagePermission(ProjectPagePermission):

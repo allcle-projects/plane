@@ -58,6 +58,11 @@ class ProjectMemberPermission(BasePermission):
         if request.user.is_anonymous:
             return False
 
+        # Custom RBAC (mote) — additive resolver fallback. Local import avoids a
+        # circular import at module load. Only WIDENS access for users with a
+        # custom role assignment; the int-role checks below are unchanged.
+        from plane.app.permissions.resolver import has_permission as _resolver_has
+
         ## Safe Methods -> Handle the filtering logic in queryset
         if request.method in SAFE_METHODS:
             return ProjectMember.objects.filter(
@@ -65,21 +70,27 @@ class ProjectMemberPermission(BasePermission):
             ).exists()
         ## Only workspace owners or admins can create the projects
         if request.method == "POST":
-            return WorkspaceMember.objects.filter(
+            if WorkspaceMember.objects.filter(
                 workspace__slug=view.workspace_slug,
                 member=request.user,
                 role__in=[ROLE.ADMIN.value, ROLE.MEMBER.value],
                 is_active=True,
-            ).exists()
+            ).exists():
+                return True
+            return _resolver_has(request.user, view.workspace_slug, "project.create")
 
         ## Only Project Admins can update project attributes
-        return ProjectMember.objects.filter(
+        if ProjectMember.objects.filter(
             workspace__slug=view.workspace_slug,
             member=request.user,
             role__in=[ROLE.ADMIN.value, ROLE.MEMBER.value],
             project_id=view.project_id,
             is_active=True,
-        ).exists()
+        ).exists():
+            return True
+        return _resolver_has(
+            request.user, view.workspace_slug, "project.manage", project_id=view.project_id
+        )
 
 
 class ProjectEntityPermission(BasePermission):
