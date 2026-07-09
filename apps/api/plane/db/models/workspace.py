@@ -278,6 +278,9 @@ class Team(BaseModel):
         related_name="led_teams",
     )
     logo_props = models.JSONField(default=dict)
+    # Teamspaces P4 (mote) — when true, the team's public pages are readable by
+    # anyone via the anon public teamspace endpoint (no login). Default false.
+    is_public = models.BooleanField(default=False)
 
     def __str__(self):
         """Return name of the team"""

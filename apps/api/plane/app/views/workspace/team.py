@@ -19,6 +19,7 @@ from django.db.models import Q
 # Third party imports
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import AllowAny
 
 # Module imports
 from ..base import BaseViewSet, BaseAPIView
@@ -335,3 +336,34 @@ class TeamPageEndpoint(BaseAPIView):
         page = Page.objects.get(workspace__slug=slug, team_id=team_id, pk=page_id)
         page.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class PublicTeamspaceEndpoint(BaseAPIView):
+    """Teamspaces P4 — anonymous read of a PUBLIC teamspace. Exposes only the
+    team name/description and its public pages (access == public). Work items
+    stay access-scoped and are never exposed here. 404 unless the team exists
+    and is_public is true."""
+
+    permission_classes = [AllowAny]
+
+    def get(self, request, slug, team_id):
+        team = Team.objects.filter(
+            workspace__slug=slug, pk=team_id, is_public=True
+        ).first()
+        if team is None:
+            return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        public_pages = Page.objects.filter(
+            workspace__slug=slug, team_id=team.id, access=0
+        ).values("id", "name", "description_html")
+
+        return Response(
+            {
+                "id": str(team.id),
+                "name": team.name,
+                "description": team.description,
+                "logo_props": team.logo_props,
+                "pages": list(public_pages),
+            },
+            status=status.HTTP_200_OK,
+        )

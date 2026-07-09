@@ -89,6 +89,7 @@ from .workspace.team import (
     TeamWorkItemsEndpoint,
     TeamViewEndpoint,
     TeamPageEndpoint,
+    PublicTeamspaceEndpoint,
 )
 from .importer import ProjectIssueCSVImportEndpoint
 from .workspace.role import (

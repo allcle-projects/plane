@@ -14,6 +14,7 @@ from plane.app.views import (
     TeamWorkItemsEndpoint,
     TeamViewEndpoint,
     TeamPageEndpoint,
+    PublicTeamspaceEndpoint,
 )
 
 
@@ -80,5 +81,11 @@ urlpatterns = [
         "workspaces/<str:slug>/teamspaces/<uuid:team_id>/pages/<uuid:page_id>/",
         TeamPageEndpoint.as_view(),
         name="teamspace-pages",
+    ),
+    # Anonymous public read of a public teamspace (phase 4).
+    path(
+        "public/workspaces/<str:slug>/teamspaces/<uuid:team_id>/",
+        PublicTeamspaceEndpoint.as_view(),
+        name="public-teamspace",
     ),
 ]
