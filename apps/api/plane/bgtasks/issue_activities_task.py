@@ -1837,6 +1837,22 @@ def issue_activity(
                 is_automation=is_automation,
             )
 
+        # Slack delivery (mote) — if the project has a SlackProjectSync with an
+        # incoming-webhook URL, push a short activity summary to it. Self-contained
+        # (no external task-bot); a no-op when no webhook is configured.
+        if issue_id is not None and project_id is not None:
+            from plane.bgtasks.slack_task import slack_activity_notify
+
+            slack_activity_notify.delay(
+                project_id=project_id,
+                actor_id=actor_id,
+                issue_id=issue_id,
+                issue_activities_created=json.dumps(
+                    IssueActivitySerializer(issue_activities_created, many=True).data,
+                    cls=DjangoJSONEncoder,
+                ),
+            )
+
         if notification:
             notifications.delay(
                 type=type,
