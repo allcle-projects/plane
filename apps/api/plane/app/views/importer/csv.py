@@ -24,11 +24,31 @@ from plane.db.models import Project, State
 
 
 # CSV header aliases -> canonical field. Case-insensitive; whitespace trimmed.
-_NAME_KEYS = ("name", "title", "summary")
-_DESC_KEYS = ("description", "desc", "details")
+# Covers plain CSV plus Jira and Notion exports:
+#   Jira    -> "Summary"/"Description"/"Priority"/"Status" (+ "Issue key" ignored)
+#   Notion  -> "Name"/"Status"/"Priority" (+ arbitrary property columns ignored)
+_NAME_KEYS = ("name", "title", "summary", "task name", "work item")
+_DESC_KEYS = ("description", "desc", "details", "body")
 _PRIORITY_KEYS = ("priority",)
 _STATE_KEYS = ("state", "status")
 _VALID_PRIORITIES = {"urgent", "high", "medium", "low", "none"}
+# Vendor priority vocab -> Plane priority. Jira uses Highest/High/Medium/Low/Lowest;
+# Notion commonly uses High/Medium/Low. Anything unknown falls through to "none".
+_PRIORITY_ALIASES = {
+    "highest": "urgent",
+    "critical": "urgent",
+    "blocker": "urgent",
+    "urgent": "urgent",
+    "high": "high",
+    "medium": "medium",
+    "normal": "medium",
+    "low": "low",
+    "lowest": "low",
+    "minor": "low",
+    "trivial": "low",
+    "none": "none",
+    "no priority": "none",
+}
 MAX_ROWS = 5000
 
 
@@ -39,6 +59,14 @@ def _pick(row_lower, keys):
             if v:
                 return v
     return ""
+
+
+def _normalize_priority(raw):
+    """Map a vendor priority label to a Plane priority, or "" if unknown."""
+    key = raw.strip().lower()
+    if key in _VALID_PRIORITIES:
+        return key
+    return _PRIORITY_ALIASES.get(key, "")
 
 
 class ProjectIssueCSVImportEndpoint(BaseAPIView):
@@ -105,8 +133,8 @@ class ProjectIssueCSVImportEndpoint(BaseAPIView):
                 data["description_html"] = "<p>{}</p>".format(
                     desc.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
                 )
-            pr = _pick(row_lower, _PRIORITY_KEYS).lower()
-            if pr in _VALID_PRIORITIES:
+            pr = _normalize_priority(_pick(row_lower, _PRIORITY_KEYS))
+            if pr:
                 data["priority"] = pr
             st = _pick(row_lower, _STATE_KEYS).lower()
             if st and st in states:
