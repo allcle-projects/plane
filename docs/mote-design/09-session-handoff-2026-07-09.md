@@ -45,6 +45,8 @@ Plane 유료(EE) 기능을 CE 포크 내부 구현(`ee/` 없이 `ce/**` alias + 
 - **인증**: 서버 env 에 `SLACK_SIGNING_SECRET`(진짜 Slack 앱 서명검증) 또는 `SLACK_INTAKE_TOKEN`(Workflow-Builder 용 공유토큰) 중 하나 필요. 둘 다 없으면 엔드포인트가 거부(open-by-accident 방지). 현재 server3 `plane.env` 에 `SLACK_INTAKE_TOKEN` 프로비저닝됨(48-hex). Slack 앱을 만들면 `SLACK_SIGNING_SECRET` 를 plane.env 에 추가하고 api/worker recreate.
 - ⚠️ env 는 `docker-compose.yml` 의 `x-app-env: &app-env` 앵커에 키를 등록해야 컨테이너로 전달됨(이 스택은 `env_file` 이 아니라 명시적 environment 매핑). mote.40 에서 `SLACK_SIGNING_SECRET`·`SLACK_INTAKE_TOKEN` 두 키 추가함.
 
+**인바운드 실사용 확정 = otro-bot `/otro plane <제목>`** (별도 Slack 앱·공개 URL 불필요). otrotask(otro-bot)는 이미 Socket Mode `slack_bolt` 앱이라, task-bot(`project/orchestration/plane_intake.py` + `/otro` 핸들러 `plane` 분기)이 위 intake 엔드포인트를 공유토큰으로 호출해 **'건의함'(IDEA) 프로젝트**에 태스크 생성. 실슬랙 검증 완료. 제목 없이 `/otro plane` → 입력 모달. 전용 `/plane-task` 커맨드 + 메시지 우클릭 숏컷 핸들러도 배선돼 대기중이나, Slack 앱에 커맨드/숏컷 선언 등록이 필요(App Configuration Token 은 api.slack.com UI 에서만 발급 가능 — 서버·env·mote-dev 어디에도 없음). 등록 시 server3 `task-bot/register_plane_slack.py`(apps.manifest.update) 사용. 정본=[[project_plane_selfhost_migration]] 메모리.
+
 ### 모바일
 웹이 반응형이라 모바일 브라우저·PWA로 전 기능 사용 가능. 네이티브 앱은 별도 오픈소스 레포(React Native) 포크가 필요하며, 표준 기능은 셀프호스트 URL 지원 앱으로 접속 가능하나 커스텀 mote 기능은 웹 전용.
 
