@@ -12,6 +12,7 @@
 # never affect the activity pipeline.
 
 import json
+import re
 
 import requests
 from celery import shared_task
@@ -19,6 +20,20 @@ from django.conf import settings
 
 from plane.db.models import SlackProjectSync, Issue, User
 from plane.utils.exception_logger import log_exception
+
+
+_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def _plain(html):
+    """Strip HTML tags so the Slack snippet reads as plain text (Slack renders
+    no HTML). Collapses whitespace and unescapes the few entities the editor emits."""
+    if not html:
+        return ""
+    text = _TAG_RE.sub(" ", html)
+    for entity, char in (("&amp;", "&"), ("&lt;", "<"), ("&gt;", ">"), ("&nbsp;", " "), ("&quot;", '"'), ("&#39;", "'")):
+        text = text.replace(entity, char)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 # Which activity fields are worth announcing, and how to phrase them.
@@ -76,8 +91,8 @@ def slack_activity_notify(project_id, actor_id, issue_id, issue_activities_creat
                 continue
             verb = _FIELD_VERB[field]
             if field == "comment":
-                snippet = (activity.get("new_value") or "").strip()
-                # comment_stripped is not on the activity; use the comment text field.
+                snippet = _plain(activity.get("new_value") or "")
+                # new_value carries comment_html; render it as plain text for Slack.
                 detail = f": {snippet[:280]}" if snippet else ""
                 lines.append(f"💬 {actor_name} {verb} *{identifier}*{detail}")
             elif field is None:

@@ -10,10 +10,17 @@ from django.urls import path
 from plane.app.views import (
     SlackProjectSyncEndpoint,
     GithubRepositorySyncEndpoint,
+    SlackTaskIntakeEndpoint,
 )
 
 
 urlpatterns = [
+    # Inbound: Slack slash command / workflow → create a Plane work item.
+    path(
+        "slack/intake/<str:slug>/<uuid:project_id>/",
+        SlackTaskIntakeEndpoint.as_view(),
+        name="slack-task-intake",
+    ),
     path(
         "workspaces/<str:slug>/projects/<uuid:project_id>/slack-syncs/",
         SlackProjectSyncEndpoint.as_view(),

@@ -11,14 +11,14 @@ Plane 유료(EE) 기능을 CE 포크 내부 구현(`ee/` 없이 `ce/**` alias + 
 
 | 서비스 | 태그 |
 |---|---|
-| web (frontend) | `v1.3.1-mote.38` |
-| api/worker/beat-worker/migrator (backend) | `v1.3.1-mote.38` |
+| web (frontend) | `v1.3.1-mote.40` |
+| api/worker/beat-worker/migrator (backend) | `v1.3.1-mote.40` |
 | space | `v1.3.1-space.2` |
 | admin | `v1.3.1-mote.8` |
 | live | `v1.3.1-mote.7` |
 | proxy | `v1.3.1-mote.1` |
 
-전 컨테이너 healthy. 마이그레이션 head = **0143_teamspace_views_pages**.
+전 컨테이너 healthy. 마이그레이션 head = **0144_teamspace_public** (mote.40 은 모델 변경 없음 — head 불변).
 
 ### 후속 라운드 (mote.37 / mote.38)
 
@@ -34,9 +34,16 @@ Plane 유료(EE) 기능을 CE 포크 내부 구현(`ee/` 없이 `ce/**` alias + 
 | Notion/Jira Importer (CSV alias + 벤더 우선순위 정규화) | mote.39 | e2e(Jira CSV) |
 | Teamspaces P4 (Team.is_public 0144 + anon PublicTeamspaceEndpoint; 팀상세 Public/Private 토글) | mote.39 | e2e + 브라우저 |
 | Custom RBAC Page/Project 게이트 (class-level permission_classes → additive resolver) | mote.39 | e2e 3/3 + 라이브 무회귀 |
+| Slack 아웃바운드 실웹훅 검증 + 코멘트 HTML→plain strip | mote.40 | 실 webhook 캡처(실 worker POST) + HTML strip |
+| Slack 인바운드 (`/api/slack/intake/<slug>/<project_id>/`: 슬래시커맨드/워크플로우 → work item, 서명/토큰 인증) | mote.40 | e2e 6/6 + 라이브(공개 프록시 POST→이슈생성, 잘못된토큰 401) |
 
 ### Slack 설정 방법 (운영자용)
-프로젝트 설정 → **Integrations** → Slack channel 에 Slack incoming-webhook URL 붙여넣기. 이후 그 프로젝트의 이슈 코멘트/상태변경 등이 해당 Slack 채널로 자동 전송됨(외부 task-bot 불필요). webhook 미설정 프로젝트는 no-op.
+
+**아웃바운드 (Plane → Slack).** 프로젝트 설정 → **Integrations** → Slack channel 에 Slack incoming-webhook URL 붙여넣기. 이후 그 프로젝트의 이슈 코멘트/상태변경 등이 해당 Slack 채널로 자동 전송됨(외부 task-bot 불필요). webhook 미설정 프로젝트는 no-op. 코멘트 스니펫은 plain-text 로 정규화되어 전송(Slack HTML 미렌더).
+
+**인바운드 (Slack → Plane 태스크).** 프로젝트 설정 → **Integrations** → "Slack → work item (inbound)" 섹션의 intake URL(`https://plane.motemote.co.kr/api/slack/intake/<slug>/<project_id>/`)을 복사. 이 URL 을 Slack 슬래시커맨드(예: `/plane-task <제목>`) 의 Request URL 또는 Slack Workflow-Builder 웹훅 스텝에 붙이면, 슬랙에서 건의한 내용이 그 프로젝트의 work item 으로 생성됨. 제목=명령 텍스트 1행, 나머지 본문·제출자(#채널·유저)는 설명에 attribution 으로 기록.
+- **인증**: 서버 env 에 `SLACK_SIGNING_SECRET`(진짜 Slack 앱 서명검증) 또는 `SLACK_INTAKE_TOKEN`(Workflow-Builder 용 공유토큰) 중 하나 필요. 둘 다 없으면 엔드포인트가 거부(open-by-accident 방지). 현재 server3 `plane.env` 에 `SLACK_INTAKE_TOKEN` 프로비저닝됨(48-hex). Slack 앱을 만들면 `SLACK_SIGNING_SECRET` 를 plane.env 에 추가하고 api/worker recreate.
+- ⚠️ env 는 `docker-compose.yml` 의 `x-app-env: &app-env` 앵커에 키를 등록해야 컨테이너로 전달됨(이 스택은 `env_file` 이 아니라 명시적 environment 매핑). mote.40 에서 `SLACK_SIGNING_SECRET`·`SLACK_INTAKE_TOKEN` 두 키 추가함.
 
 ### 모바일
 웹이 반응형이라 모바일 브라우저·PWA로 전 기능 사용 가능. 네이티브 앱은 별도 오픈소스 레포(React Native) 포크가 필요하며, 표준 기능은 셀프호스트 URL 지원 앱으로 접속 가능하나 커스텀 mote 기능은 웹 전용.

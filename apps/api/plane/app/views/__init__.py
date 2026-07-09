@@ -305,6 +305,9 @@ from .integration.base import (
     SlackProjectSyncEndpoint,
     GithubRepositorySyncEndpoint,
 )
+from .integration.slack_intake import (
+    SlackTaskIntakeEndpoint,
+)
 
 from .error_404 import custom_404_view
 

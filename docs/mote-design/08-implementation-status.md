@@ -2,7 +2,7 @@
 
 > 대상: `plane.motemote.co.kr` (CE v1.3.1 fork, branch `mote`).
 > 로드맵 전체는 [`00-MASTER-ROADMAP.md`](./00-MASTER-ROADMAP.md) 참조. 이 문서는 **어디까지 했고 무엇이 남았는지**의 정본.
-> 배포 상태: **백엔드 `v1.3.1-mote.39` + 프론트 `v1.3.1-mote.39` + space `v1.3.1-space.2`** (server3 `/srv/shared/stack/plane-server3/`, compose.override 태그). 마이그 head 0144.
+> 배포 상태: **백엔드 `v1.3.1-mote.40` + 프론트 `v1.3.1-mote.40` + space `v1.3.1-space.2`** (server3 `/srv/shared/stack/plane-server3/`, compose.override 태그). 마이그 head 0144.
 
 ## 요약 (2026-07-09): 로드맵 핵심 유료기능 전량 자체구현 완료 🎉
 
@@ -43,6 +43,8 @@
 | 06 | **Notion/Jira Importer** | mote.39 | — | CSV importer 확장: Jira/Notion export 직접 인식(Summary/Status/Priority auto-map), 벤더 우선순위 정규화(Highest/Critical→urgent·Lowest/Minor→low). e2e(Jira CSV·Highest→urgent·Lowest→low) |
 | 05 | **Teamspaces P4** (공개) | mote.39 | PLANE-41 | Team.is_public(마이그0144)+anon PublicTeamspaceEndpoint(`/public/.../teamspaces/<id>/`): is_public일 때만 팀명+공개페이지 노출(work-item 미노출·비공개 404). 팀상세 Public/Private 토글. e2e(private404→public200)+브라우저 |
 | 05 | **Custom RBAC Page/Project 게이트** | mote.39 | PLANE-41 | ProjectMemberPermission(project.create/manage)+ProjectPagePermission(page.create/manage)이 additive resolver 참조(class-level 게이트—allow_permission 미경유분). 무회귀(int체크 불변·custom롤만 확대). e2e 3/3(page guest 403→커스텀롤 201→revoke 403)+라이브 무회귀 |
+| 06 | **Slack 아웃바운드 실웹훅 검증 + HTML strip** | mote.40 | — | 실 webhook(캡처 리시버) 부착→실 celery worker가 `requests.post` 실제 전송, 캡처 페이로드 확인(실 코멘트→Slack). 코멘트 스니펫 `<p>` 원본HTML→plain-text strip(`_plain()`, Slack은 HTML 미렌더). 라이브 e2e |
+| 06 | **Slack 인바운드 (Slack→Plane 태스크)** | mote.40 | — | 신규 공개 엔드포인트 `POST /api/slack/intake/<slug>/<project_id>/`(AllowAny·인증없음): 슬랙 슬래시커맨드(`/plane-task <제목>`)·Workflow-Builder 웹훅→해당 프로젝트에 work item 생성. 인증=Slack 서명(`SLACK_SIGNING_SECRET`) 또는 공유토큰(`SLACK_INTAKE_TOKEN`), 둘 다 미설정시 거부(open-by-accident 방지). 제목=text 1행·본문/제출자 attribution 자동. FE=프로젝트설정 Integrations에 "Slack→work item(inbound)" 섹션(프로젝트별 intake URL+복사). e2e 6/6(정상생성·잘못된토큰401·빈text·JSON워크플로우·미설정거부·미지프로젝트) + **라이브 검증(실 공개 프록시 POST→이슈생성→정리, 잘못된토큰→401)** |
 
 **⇒ 문서 03(Work Item Power) 전량 완결 + 문서 04 전량 완결(§5 CE기존) + 문서 02 Collections·Shared Pages·Publish Views 완결 + 문서 06 Automations·Enhanced Search 완결 + 문서 05 Teamspaces·Custom RBAC 완결. 🎉 로드맵 핵심 유료기능 전량 자체구현 완료.**
 

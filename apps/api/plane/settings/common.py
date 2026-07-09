@@ -408,6 +408,13 @@ LIVE_URL = urljoin(LIVE_BASE_URL, LIVE_BASE_PATH) if LIVE_BASE_URL else None
 # WEB URL
 WEB_URL = os.environ.get("WEB_URL")
 
+# Slack inbound intake (mote) — auth for /api/slack/intake/<slug>/<project_id>/.
+# SLACK_SIGNING_SECRET validates real Slack slash-command signatures; the
+# SLACK_INTAKE_TOKEN is a shared secret for the Workflow-Builder path (which
+# cannot sign). With neither set the intake endpoint refuses to run.
+SLACK_SIGNING_SECRET = os.environ.get("SLACK_SIGNING_SECRET", "")
+SLACK_INTAKE_TOKEN = os.environ.get("SLACK_INTAKE_TOKEN", "")
+
 HARD_DELETE_AFTER_DAYS = int(os.environ.get("HARD_DELETE_AFTER_DAYS", 60))
 
 # Instance Changelog URL

@@ -43,6 +43,8 @@ function IntegrationsSettingsPage() {
   // derived values
   const canPerformProjectAdminActions = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.PROJECT);
   const pageTitle = projectDetails?.name ? `${projectDetails?.name} - Integrations` : undefined;
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const intakeUrl = `${origin}/api/slack/intake/${workspaceSlug ?? ""}/${projectId ?? ""}/`;
 
   const slackKey = workspaceSlug && projectId ? `SLACK_SYNCS_${workspaceSlug}_${projectId}` : null;
   const githubKey = workspaceSlug && projectId ? `GITHUB_SYNCS_${workspaceSlug}_${projectId}` : null;
@@ -238,6 +240,39 @@ function IntegrationsSettingsPage() {
               Add
             </Button>
           </div>
+        </div>
+
+        {/* Inbound: Slack suggestion → Plane work item */}
+        <div className="mt-10">
+          <h4 className="text-base font-medium text-custom-text-100">Slack → work item (inbound)</h4>
+          <p className="mt-1 text-sm text-custom-text-300">
+            Turn a Slack suggestion into a work item in this project. Point a Slack slash command (e.g.{" "}
+            <code className="rounded bg-custom-background-80 px-1">/plane-task</code>) or a Slack Workflow-Builder webhook
+            step at the URL below. New items land in this project.
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Input
+              type="text"
+              readOnly
+              value={intakeUrl}
+              onClick={(e) => (e.target as HTMLInputElement).select()}
+              className="min-w-[320px] flex-1 font-mono text-xs"
+            />
+            <Button
+              variant="neutral-primary"
+              onClick={() => {
+                navigator.clipboard?.writeText(intakeUrl);
+                setToast({ type: TOAST_TYPE.SUCCESS, title: "Copied", message: "Intake URL copied." });
+              }}
+            >
+              Copy URL
+            </Button>
+          </div>
+          <p className="mt-2 text-xs text-custom-text-400">
+            Requests are verified by the server-side Slack signing secret (<code>SLACK_SIGNING_SECRET</code>) or a shared
+            token (<code>SLACK_INTAKE_TOKEN</code>). Ask your instance admin for the token if you use the Workflow-Builder
+            path.
+          </p>
         </div>
       </section>
     </SettingsContentWrapper>
