@@ -28,6 +28,8 @@ from plane.app.serializers import (
     TeamMemberSerializer,
     TeamProjectSerializer,
     IssueSerializer,
+    IssueViewSerializer,
+    PageSerializer,
 )
 from plane.db.models import (
     Workspace,
@@ -36,6 +38,8 @@ from plane.db.models import (
     TeamProject,
     Project,
     Issue,
+    IssueView,
+    Page,
 )
 
 
@@ -258,3 +262,76 @@ class TeamWorkItemsEndpoint(BaseAPIView):
         )
         serializer = IssueSerializer(issues, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class TeamViewEndpoint(BaseAPIView):
+    """Teamspaces P3 — views owned by a Teamspace. A team view is a
+    workspace-level saved view (project null) tagged with the team, so it shows
+    up in the teamspace instead of a single project."""
+
+    @allow_permission([ROLE.ADMIN, ROLE.MEMBER, ROLE.GUEST], level="WORKSPACE")
+    def get(self, request, slug, team_id):
+        views = IssueView.objects.filter(
+            workspace__slug=slug, team_id=team_id
+        ).select_related("workspace", "owned_by")
+        serializer = IssueViewSerializer(views, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @allow_permission([ROLE.ADMIN, ROLE.MEMBER], level="WORKSPACE")
+    def post(self, request, slug, team_id):
+        team = Team.objects.get(workspace__slug=slug, pk=team_id)
+        serializer = IssueViewSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(
+                workspace_id=team.workspace_id,
+                team_id=team.id,
+                owned_by_id=request.user.id,
+                created_by_id=request.user.id,
+                updated_by_id=request.user.id,
+            )
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @allow_permission([ROLE.ADMIN, ROLE.MEMBER], level="WORKSPACE")
+    def delete(self, request, slug, team_id, view_id):
+        view = IssueView.objects.get(workspace__slug=slug, team_id=team_id, pk=view_id)
+        view.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class TeamPageEndpoint(BaseAPIView):
+    """Teamspaces P3 — pages owned by a Teamspace. A team page is a workspace
+    page (no project link) tagged with the team, giving the teamspace its own
+    wiki space."""
+
+    @allow_permission([ROLE.ADMIN, ROLE.MEMBER, ROLE.GUEST], level="WORKSPACE")
+    def get(self, request, slug, team_id):
+        pages = Page.objects.filter(
+            workspace__slug=slug, team_id=team_id
+        ).select_related("workspace", "owned_by")
+        serializer = PageSerializer(pages, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @allow_permission([ROLE.ADMIN, ROLE.MEMBER], level="WORKSPACE")
+    def post(self, request, slug, team_id):
+        team = Team.objects.get(workspace__slug=slug, pk=team_id)
+        # PageSerializer.create is coupled to the project-page context flow, so
+        # create the workspace/team page directly then serialize for the response.
+        page = Page.objects.create(
+            workspace_id=team.workspace_id,
+            team_id=team.id,
+            name=request.data.get("name", ""),
+            access=request.data.get("access", 0),
+            color=request.data.get("color", ""),
+            owned_by_id=request.user.id,
+            created_by_id=request.user.id,
+            updated_by_id=request.user.id,
+        )
+        serializer = PageSerializer(page)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @allow_permission([ROLE.ADMIN, ROLE.MEMBER], level="WORKSPACE")
+    def delete(self, request, slug, team_id, page_id):
+        page = Page.objects.get(workspace__slug=slug, team_id=team_id, pk=page_id)
+        page.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

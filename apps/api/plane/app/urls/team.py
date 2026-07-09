@@ -12,6 +12,8 @@ from plane.app.views import (
     TeamMemberEndpoint,
     TeamProjectEndpoint,
     TeamWorkItemsEndpoint,
+    TeamViewEndpoint,
+    TeamPageEndpoint,
 )
 
 
@@ -56,5 +58,27 @@ urlpatterns = [
         "workspaces/<str:slug>/teamspaces/<uuid:team_id>/work-items/",
         TeamWorkItemsEndpoint.as_view(),
         name="teamspace-work-items",
+    ),
+    # Team-scoped views (phase 3).
+    path(
+        "workspaces/<str:slug>/teamspaces/<uuid:team_id>/views/",
+        TeamViewEndpoint.as_view(),
+        name="teamspace-views",
+    ),
+    path(
+        "workspaces/<str:slug>/teamspaces/<uuid:team_id>/views/<uuid:view_id>/",
+        TeamViewEndpoint.as_view(),
+        name="teamspace-views",
+    ),
+    # Team-scoped pages (phase 3).
+    path(
+        "workspaces/<str:slug>/teamspaces/<uuid:team_id>/pages/",
+        TeamPageEndpoint.as_view(),
+        name="teamspace-pages",
+    ),
+    path(
+        "workspaces/<str:slug>/teamspaces/<uuid:team_id>/pages/<uuid:page_id>/",
+        TeamPageEndpoint.as_view(),
+        name="teamspace-pages",
     ),
 ]

@@ -50,6 +50,15 @@ class Page(BaseModel):
     view_props = models.JSONField(default=get_view_props)
     logo_props = models.JSONField(default=dict)
     is_global = models.BooleanField(default=False)
+    # Teamspaces P3 — mote. A page may belong to a Teamspace. Nullable so all
+    # existing pages are unaffected.
+    team = models.ForeignKey(
+        "db.Team",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="pages",
+    )
     projects = models.ManyToManyField("db.Project", related_name="pages", through="db.ProjectPage")
     moved_to_page = models.UUIDField(null=True, blank=True)
     moved_to_project = models.UUIDField(null=True, blank=True)

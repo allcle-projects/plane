@@ -54,6 +54,7 @@ class PageSerializer(BaseSerializer):
             "is_locked",
             "archived_at",
             "workspace",
+            "team",
             "created_at",
             "updated_at",
             "created_by",
@@ -63,7 +64,7 @@ class PageSerializer(BaseSerializer):
             "label_ids",
             "project_ids",
         ]
-        read_only_fields = ["workspace", "owned_by"]
+        read_only_fields = ["workspace", "owned_by", "team"]
 
     def create(self, validated_data):
         labels = validated_data.pop("labels", None)

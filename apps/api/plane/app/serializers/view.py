@@ -66,6 +66,7 @@ class IssueViewSerializer(DynamicBaseSerializer):
             "owned_by",
             "access",
             "is_locked",
+            "team",
         ]
 
     def create(self, validated_data):

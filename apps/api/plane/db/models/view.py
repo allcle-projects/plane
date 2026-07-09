@@ -70,6 +70,15 @@ class IssueView(WorkspaceBaseModel):
     owned_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="views")
     is_locked = models.BooleanField(default=False)
     archived_at = models.DateTimeField(null=True)
+    # Teamspaces P3 — mote. A view may belong to a Teamspace (workspace-level view
+    # scoped to a team). Nullable so all existing views are unaffected.
+    team = models.ForeignKey(
+        "db.Team",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="views",
+    )
 
     class Meta:
         verbose_name = "Issue View"
