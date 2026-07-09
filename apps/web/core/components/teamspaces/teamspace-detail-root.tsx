@@ -15,7 +15,7 @@ import { useState } from "react";
 import { observer } from "mobx-react";
 import { useParams, useRouter } from "next/navigation";
 import useSWR from "swr";
-import { FileText, FolderKanban, Layers, Pencil, Plus, Trash2, Users, X } from "lucide-react";
+import { FileText, FolderKanban, Globe, Layers, Lock, Pencil, Plus, Trash2, Users, X } from "lucide-react";
 // plane imports
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import { Avatar, Button } from "@plane/ui";
@@ -58,6 +58,7 @@ export const TeamspaceDetailRoot = observer(function TeamspaceDetailRoot(props: 
     addTeamProjects,
     removeTeamProject,
     deleteTeam,
+    updateTeam,
     getTeamViews,
     getTeamPages,
     fetchTeamViews,
@@ -179,6 +180,18 @@ export const TeamspaceDetailRoot = observer(function TeamspaceDetailRoot(props: 
             )}
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant={team.is_public ? "primary" : "neutral-primary"}
+              size="sm"
+              prependIcon={team.is_public ? <Globe className="size-3.5" /> : <Lock className="size-3.5" />}
+              onClick={() =>
+                void updateTeam(slug, teamId, { is_public: !team.is_public }).catch(() =>
+                  setToast({ type: TOAST_TYPE.ERROR, title: "Error!", message: "Could not change visibility." })
+                )
+              }
+            >
+              {team.is_public ? "Public" : "Private"}
+            </Button>
             <Button variant="neutral-primary" size="sm" prependIcon={<Pencil className="size-3.5" />} onClick={() => setIsEditOpen(true)}>
               Edit
             </Button>

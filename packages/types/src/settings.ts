@@ -41,7 +41,8 @@ export type TProjectSettingsTabs =
   | "labels"
   | "estimates"
   | "recurring"
-  | "automations";
+  | "automations"
+  | "integrations";
 export type TProjectSettingsItem = {
   key: TProjectSettingsTabs;
   i18n_label: string;

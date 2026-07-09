@@ -74,8 +74,10 @@ export const CSVImportModal = observer(function CSVImportModal(props: TProps) {
         <div className="flex flex-col gap-1">
           <h3 className="text-lg font-medium text-primary">Import work items from CSV</h3>
           <p className="text-sm text-tertiary">
-            Columns: <code>name</code> (required), <code>description</code>, <code>priority</code>{" "}
-            (urgent/high/medium/low/none), <code>state</code> (by name). First row is the header.
+            Columns: <code>name</code> (required), <code>description</code>, <code>priority</code>,{" "}
+            <code>state</code> (by name). First row is the header. <b>Jira</b> and <b>Notion</b> CSV
+            exports work directly (Summary/Status/Priority are auto-mapped; Highest/Lowest priorities
+            normalized).
           </p>
         </div>
 

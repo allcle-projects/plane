@@ -19,6 +19,7 @@ export type TTeam = {
   description: string;
   lead: string | null;
   logo_props: Record<string, unknown>;
+  is_public: boolean;
   // Server-computed read-only rollups (SerializerMethodField).
   member_ids: string[];
   project_ids: string[];

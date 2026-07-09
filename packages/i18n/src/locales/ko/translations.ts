@@ -1956,6 +1956,9 @@ export default {
         },
       },
     },
+    integrations: {
+      label: "연동",
+    },
     automations: {
       label: "자동화",
       "auto-archive": {

@@ -1845,6 +1845,9 @@ export default {
         },
       },
     },
+    integrations: {
+      label: "Integrations",
+    },
     automations: {
       label: "Automations",
       heading: "Automations",

@@ -5,7 +5,7 @@
  */
 
 import type { LucideIcon } from "lucide-react";
-import { Repeat, Users, Zap } from "lucide-react";
+import { Blocks, Repeat, Users, Zap } from "lucide-react";
 // plane imports
 import type { ISvgIcons } from "@plane/propel/icons";
 import {
@@ -35,4 +35,5 @@ export const PROJECT_SETTINGS_ICONS: Record<TProjectSettingsTabs, LucideIcon | R
   estimates: EstimatePropertyIcon,
   recurring: Repeat,
   automations: Zap,
+  integrations: Blocks,
 };
