@@ -2,12 +2,12 @@
 
 > 대상: `plane.motemote.co.kr` (CE v1.3.1 fork, branch `mote`).
 > 로드맵 전체는 [`00-MASTER-ROADMAP.md`](./00-MASTER-ROADMAP.md) 참조. 이 문서는 **어디까지 했고 무엇이 남았는지**의 정본.
-> 배포 상태: **백엔드 `v1.3.1-mote.38` + 프론트 `v1.3.1-mote.38` + space `v1.3.1-space.2`** (server3 `/srv/shared/stack/plane-server3/`, compose.override 태그). 마이그 head 0143.
+> 배포 상태: **백엔드 `v1.3.1-mote.39` + 프론트 `v1.3.1-mote.39` + space `v1.3.1-space.2`** (server3 `/srv/shared/stack/plane-server3/`, compose.override 태그). 마이그 head 0144.
 
 ## 요약 (2026-07-09): 로드맵 핵심 유료기능 전량 자체구현 완료 🎉
 
 문서 **02(Wiki/Publishing)·03(Work Item Power)·04(Planning) 전량 완료** + 문서 **05(Teamspaces·Custom RBAC) 완료** + 문서 **06(Automations·Enhanced Search) 완료**. XL 4종(Custom Fields·Initiatives·Teamspaces·Custom RBAC) 모두 완결.
-남은 것(비핵심/후속): Integrations(task-bot 웹훅 방식 권고) · Notion/Jira importer(CSV는 완료) · Guest 좌석비율(생략권고) · Customers/인테이크 라우팅 · Page Comments 인라인 앵커(XL) · Teamspaces P4(공개 v1) · Custom RBAC 나머지 게이트(Page/Project=class-level permission_classes 경로 전환).
+남은 것(비핵심/후속): Guest 좌석비율(생략권고) · Customers/인테이크 라우팅 · Page Comments 인라인 앵커(XL) · GitHub 아웃바운드(Slack과 동형으로 확장 가능) · 네이티브 모바일앱(별도 레포 포크 필요, 웹은 반응형으로 사용가능). **Integrations(Slack)·Notion/Jira importer·Teamspaces P4·Custom RBAC 전 게이트 완료.**
 
 ## ✅ 완료 (배포·검증)
 
@@ -39,6 +39,10 @@
 | 06 | **알림 버그 fix** | mote.37 | — | 코멘트→알림함 미발화 근본원인=notification_task가 recipient의 UserNotificationPreference를 `.get()`→pref 없는 유저(임포트/마이그) DoesNotExist→outer try/except가 삼켜 **배치 전체 알림 소실**. get_or_create 3곳(subscriber+mention2)으로 self-heal. 재현(+0)→fix(+1) 검증. 현 실유저 영향은 봇1만(무). |
 | 05 | **Teamspaces P3** (팀뷰/페이지) | mote.38 | PLANE-41 | IssueView·Page에 nullable team FK(마이그0143). TeamView/TeamPage 엔드포인트(GET/POST/DELETE). 팀상세에 Views·Pages 섹션(인라인 생성/삭제). e2e 9/9(팀뷰·페이지 CRUD+team FK)+브라우저(UI 생성확인) |
 | 06 | **CSV Importer** | mote.38 | — | POST import-csv/(멀티파트 file 또는 csv텍스트). 행당 IssueCreateSerializer(시퀀스·정렬·검증 정합). name/title/summary·description·priority·state(이름매칭) alias. 행별 에러 보고·5000행캡. work-items 헤더 Import 버튼+모달. issue.create 게이트 재사용. e2e 6/6(3생성·1에러·우선순위매핑·no-name-col 400)+브라우저 |
+| 06 | **Slack 아웃바운드 전송** | mote.39 | — | `slack_task`(자체완결, task-bot 불필요): SlackProjectSync.webhook_url 있으면 이슈 활동(코멘트·상태·우선순위·담당자·생성)을 Slack incoming-webhook으로 POST. issue_activities_task에서 dispatch·webhook 없으면 no-op·실패 삼킴. CELERY_IMPORTS 등록. FE=프로젝트설정 Integrations(webhook CRUD, 기존)+사이드바 nav 등록. e2e(webhook POST+메시지포맷)+브라우저 |
+| 06 | **Notion/Jira Importer** | mote.39 | — | CSV importer 확장: Jira/Notion export 직접 인식(Summary/Status/Priority auto-map), 벤더 우선순위 정규화(Highest/Critical→urgent·Lowest/Minor→low). e2e(Jira CSV·Highest→urgent·Lowest→low) |
+| 05 | **Teamspaces P4** (공개) | mote.39 | PLANE-41 | Team.is_public(마이그0144)+anon PublicTeamspaceEndpoint(`/public/.../teamspaces/<id>/`): is_public일 때만 팀명+공개페이지 노출(work-item 미노출·비공개 404). 팀상세 Public/Private 토글. e2e(private404→public200)+브라우저 |
+| 05 | **Custom RBAC Page/Project 게이트** | mote.39 | PLANE-41 | ProjectMemberPermission(project.create/manage)+ProjectPagePermission(page.create/manage)이 additive resolver 참조(class-level 게이트—allow_permission 미경유분). 무회귀(int체크 불변·custom롤만 확대). e2e 3/3(page guest 403→커스텀롤 201→revoke 403)+라이브 무회귀 |
 
 **⇒ 문서 03(Work Item Power) 전량 완결 + 문서 04 전량 완결(§5 CE기존) + 문서 02 Collections·Shared Pages·Publish Views 완결 + 문서 06 Automations·Enhanced Search 완결 + 문서 05 Teamspaces·Custom RBAC 완결. 🎉 로드맵 핵심 유료기능 전량 자체구현 완료.**
 

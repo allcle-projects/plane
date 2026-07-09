@@ -30,6 +30,16 @@ Plane 유료(EE) 기능을 CE 포크 내부 구현(`ee/` 없이 `ce/**` alias + 
 | Custom RBAC 게이트 실적용 (issue create/update/delete·state manage → additive resolver) | mote.37 | e2e 7/7 + 라이브 무회귀 5/5 |
 | Teamspaces P3 (팀뷰·팀페이지: team FK on IssueView/Page, 마이그 0143, 팀상세 Views/Pages 섹션) | mote.38 | e2e 9/9 + 브라우저 |
 | CSV Importer (import-csv 엔드포인트 + work-items 헤더 Import 모달) | mote.38 | e2e 6/6 + 브라우저 |
+| Slack 아웃바운드 전송 (slack_task → webhook, 자체완결·no task-bot; FE Integrations nav 등록) | mote.39 | e2e + 브라우저 |
+| Notion/Jira Importer (CSV alias + 벤더 우선순위 정규화) | mote.39 | e2e(Jira CSV) |
+| Teamspaces P4 (Team.is_public 0144 + anon PublicTeamspaceEndpoint; 팀상세 Public/Private 토글) | mote.39 | e2e + 브라우저 |
+| Custom RBAC Page/Project 게이트 (class-level permission_classes → additive resolver) | mote.39 | e2e 3/3 + 라이브 무회귀 |
+
+### Slack 설정 방법 (운영자용)
+프로젝트 설정 → **Integrations** → Slack channel 에 Slack incoming-webhook URL 붙여넣기. 이후 그 프로젝트의 이슈 코멘트/상태변경 등이 해당 Slack 채널로 자동 전송됨(외부 task-bot 불필요). webhook 미설정 프로젝트는 no-op.
+
+### 모바일
+웹이 반응형이라 모바일 브라우저·PWA로 전 기능 사용 가능. 네이티브 앱은 별도 오픈소스 레포(React Native) 포크가 필요하며, 표준 기능은 셀프호스트 URL 지원 앱으로 접속 가능하나 커스텀 mote 기능은 웹 전용.
 
 ## 이번 세션에 완료한 기능 (릴리스 · 티켓 · 검증)
 
