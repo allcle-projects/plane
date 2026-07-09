@@ -33,8 +33,10 @@ from .workspace import urlpatterns as workspace_urls
 from .timezone import urlpatterns as timezone_urls
 from .exporter import urlpatterns as exporter_urls
 from .integration import urlpatterns as integration_urls
+from .importer import urlpatterns as importer_urls
 
 urlpatterns = [
+    *importer_urls,
     *analytic_urls,
     *asset_urls,
     *cycle_urls,
