@@ -43,7 +43,7 @@ class StateViewSet(BaseViewSet):
         )
 
     @invalidate_cache(path="workspaces/:slug/states/", url_params=True, user=False)
-    @allow_permission([ROLE.ADMIN])
+    @allow_permission([ROLE.ADMIN], permission_key="issue.state.manage")
     def create(self, request, slug, project_id):
         try:
             serializer = StateSerializer(data=request.data)
@@ -102,7 +102,7 @@ class StateViewSet(BaseViewSet):
         return Response(states, status=status.HTTP_200_OK)
 
     @invalidate_cache(path="workspaces/:slug/states/", url_params=True, user=False)
-    @allow_permission([ROLE.ADMIN])
+    @allow_permission([ROLE.ADMIN], permission_key="issue.state.manage")
     def mark_as_default(self, request, slug, project_id, pk):
         # Select all the states which are marked as default
         _ = State.objects.filter(workspace__slug=slug, project_id=project_id, default=True).update(default=False)
@@ -110,7 +110,7 @@ class StateViewSet(BaseViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @invalidate_cache(path="workspaces/:slug/states/", url_params=True, user=False)
-    @allow_permission([ROLE.ADMIN])
+    @allow_permission([ROLE.ADMIN], permission_key="issue.state.manage")
     def destroy(self, request, slug, project_id, pk):
         state = State.objects.get(is_triage=False, pk=pk, project_id=project_id, workspace__slug=slug)
 
