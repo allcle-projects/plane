@@ -4,8 +4,10 @@
  * See the LICENSE file for details.
  */
 
+import { useState } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
+import { Upload } from "lucide-react";
 // icons
 import { Circle } from "lucide-react";
 // plane imports
@@ -27,6 +29,7 @@ import { BreadcrumbLink } from "@/components/common/breadcrumb-link";
 import { CountChip } from "@/components/common/count-chip";
 // constants
 import { HeaderFilters } from "@/components/issues/filters";
+import { CSVImportModal } from "@/components/importers/csv-import-modal";
 // helpers
 // hooks
 import { useCommandPalette } from "@/hooks/store/use-command-palette";
@@ -54,6 +57,8 @@ export const IssuesHeader = observer(function IssuesHeader() {
   const { toggleCreateIssueModal } = useCommandPalette();
   const { allowPermissions } = useUserPermissions();
   const { isMobile } = usePlatformOS();
+  // CSV import (mote)
+  const [isImportOpen, setIsImportOpen] = useState(false);
 
   const SPACE_APP_URL = (SPACE_BASE_URL.trim() === "" ? window.location.origin : SPACE_BASE_URL) + SPACE_BASE_PATH;
   const publishedURL = `${SPACE_APP_URL}/issues/${currentProjectDetails?.anchor}`;
@@ -65,6 +70,7 @@ export const IssuesHeader = observer(function IssuesHeader() {
   );
 
   return (
+    <>
     <Header>
       <Header.LeftItem>
         <div className="flex items-center gap-2.5">
@@ -118,6 +124,16 @@ export const IssuesHeader = observer(function IssuesHeader() {
         </div>
         {canUserCreateIssue && (
           <Button
+            variant="neutral-primary"
+            size="lg"
+            prependIcon={<Upload className="size-3.5" />}
+            onClick={() => setIsImportOpen(true)}
+          >
+            <div className="hidden sm:block">Import</div>
+          </Button>
+        )}
+        {canUserCreateIssue && (
+          <Button
             variant="primary"
             size="lg"
             onClick={() => {
@@ -131,5 +147,14 @@ export const IssuesHeader = observer(function IssuesHeader() {
         )}
       </Header.RightItem>
     </Header>
+    {workspaceSlug && projectId ? (
+      <CSVImportModal
+        isOpen={isImportOpen}
+        handleClose={() => setIsImportOpen(false)}
+        workspaceSlug={workspaceSlug.toString()}
+        projectId={projectId.toString()}
+      />
+    ) : null}
+    </>
   );
 });
