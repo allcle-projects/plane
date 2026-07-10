@@ -156,12 +156,21 @@ the run.**
 
 ---
 
-## 7. Alternative: DB-write path (preserves seq_id + page binary)
+## 7. ✅ CHOSEN PATH — DB-write (preserves seq_id + page binary)
 
-`11_dbwrite_issues.py` and `21_dbwrite_pages.py` are a **separate, riskier**
-path that runs Django ORM `bulk_create()` **inside `plane-api-1`**, bypassing
-the public API entirely. Use this only if the public-API path's limitations
-(§4 above) are unacceptable. See doc
+> **Decision (2026-07-10, otro): the weekend run uses THIS path (B), not the
+> §2 public-API path.** Reason: the team references work items by number
+> (e.g. `TEAMDEV-395`, the ALLCL-177/178 precedent), so exact `sequence_id`
+> preservation matters. The §2 API scripts remain as a fallback only.
+> **Prerequisite order for the weekend**: (1) freeze task-bot cloud writes
+> (doc §4.1), (2) fresh backup + **practiced recovery drill**, (3) dry-run
+> both DB-write scripts, review the unmapped-state/label/user warnings,
+> (4) `--execute` per project, (5) `90_verify.py` (coverage; use
+> `--strict-seq` — numbers must match on this path).
+
+`11_dbwrite_issues.py` and `21_dbwrite_pages.py` run Django ORM
+`bulk_create()` **inside `plane-api-1`**, bypassing the public API entirely.
+See doc
 `docs/mote-design/11-cloud-to-selfhost-migration-plan.md` §8. **They are
 scaffolds** — dry-run-default, `--execute` required, nothing runs
 automatically, same as every other script here — but they write directly to
