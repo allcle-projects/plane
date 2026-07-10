@@ -156,7 +156,7 @@
 
 > **가져올 수 있는가? = 예 (2026-07-10 §2.1 라이브 확인).** 워크아이템·페이지(본문 포함) 전량 pullable. 남은 건 아래 정책 결정뿐. **주말 실행 예정 — 그 전 착수 금지.**
 
-1. **`created_at`/작성자 보존이 중요한가?** 아니오면 API 재동기화로 충분(작성일=이관일, 작성자=설명 주석). 예면 셀프호스트 직접 DB write 또는 포크 확장 API의 created_at/external_id 명시 기입 경로 검증 필요.
+1. **경로 선택 = 공개 API vs 직접 DB-write** (§8 검토 완료). 이슈 번호(seq_id)·페이지 Yjs 본문 보존이 필요하면 **DB-write**(§8, 이 팀은 번호 인용 잦아 권고). created_at/작성자는 양쪽 다 이메일매핑으로 보존됨.
 2. **첨부파일 이관 범위**: 전체 vs 최근/특정 프로젝트만 vs 생략. (파일별 S3 다운로드→재업로드 공수)
 3. **컷오버 후 클라우드 워크스페이스**: 언제 구독 해지/삭제할지(안정화 기간).
 4. **freeze 착수 시점**: 주말 이관과 함께 할지, 그 전에 먼저 드리프트만 멈출지.
@@ -167,6 +167,60 @@
 - **멱등 델타/전량 재이관 스크립트 작성** + dry-run(생성 0, diff 리포트만).
 - **복구 드릴 1회**(백업은 매일 있음, 검증된 restore 이력만 부재 — 문서10 P1).
 - 페이지 이관은 `description_binary`(Yjs) 그대로 write 하는 경로 확인 필요(포크 페이지 생성 API가 binary 수용하는지).
+
+## 8. 대안 경로 — 직접 DB write (seq_id·작성자·페이지 binary 완전 보존) [2026-07-10 검토]
+
+공개 API로는 §2.2의 3가지가 유실된다: **이슈 번호(seq_id)**, **페이지 협업본문(Yjs binary)**, (일부) 작성자. otro 요청으로 **DB 직접 쓰기 경로**를 스키마·모델 코드로 검토함. 결론: **기술적으로 완전 가능하고, 이 팀 상황에선 리스크가 낮다.** 단 공개 API보다 손이 많이 가고 안전망(DB 제약)이 적어 신중 실행 필요.
+
+### 8.1 왜 되는가 — seq_id 배정 메커니즘
+`Issue.save()`는 **생성 시(`self._state.adding`)** advisory lock 잡고 `IssueSequence` 최대값+1로 `sequence_id`를 **무조건 덮어씀**(내가 세팅해도 무시). 그래서 공개 API·ORM `.save()` 모두 번호 보존 불가.
+→ **Django `bulk_create()`는 `save()`도 signal도 호출하지 않는다.** 따라서 `sequence_id`를 명시한 채 `Issue.objects.bulk_create([...])` 하면 **그대로 들어간다.** 대신 매칭되는 `IssueSequence(issue, sequence=seq_id, project, workspace)` 행을 **수동 bulk_create** 해야 함(정상 경로에선 save()가 만들어 줌).
+
+### 8.2 스키마 실측 (2026-07-10, 자체호스트 DB)
+- **`issues` 유니크 제약 = PK(id) 뿐** — (project, sequence_id) DB 유니크가 **없음**(앱 레벨 advisory lock만). → 번호 충돌 시 DB가 안 막아줌 → **external_id 사전필터로 중복 방지 필수**(안전망을 스크립트가 대신).
+- **충돌 없음(실측)**: 델타가 전부 자체호스트 max seq **위쪽**(GROWTH 68→69~136·ALLCL 182→183~197·STORE 62→63~67·MOTEERP 71→72~73·TEAMDEV 388→389~410). 기존 번호와 안 겹침 → 안전.
+- **`issue_versions` 0행(822 이슈)** → IssueVersion 미사용 → bulk_create가 version-sync signal 건너뛰어도 **무해**(오히려 알림·활동로그 노이즈 없음 = 이관에 바람직).
+- **`issues`/`pages` 둘 다 `external_id`·`external_source`·`description_binary(bytea)` 보유** → 이슈·**페이지 모두** 멱등 + **binary 완전 보존**(공개 API 페이지엔 external_id/binary 둘 다 없었음 — DB-write만의 이점).
+- issues NOT NULL: `name·description_json(jsonb)·description_html(text)·priority·sequence_id·sort_order·is_draft·project_id·workspace_id·created_at·updated_at`. 페이지 NOT NULL 추가: `owned_by_id·access·color·view_props·logo_props·is_global·sort_order`. `project_pages`(page_id·project_id·workspace_id) 링크 테이블 별도.
+- issue_comments NOT NULL: `comment_html·comment_json·comment_stripped·access`(→ stripped는 html에서 파생).
+
+### 8.3 쓰기 대상 테이블 (per 프로젝트, transaction.atomic)
+1. `issues` — id=uuid4, **sequence_id=클라우드값**, name, description_json/html/stripped, description_binary=`base64decode(클라우드 description_binary)`, priority, state_id=**이름매핑**, created_by_id=**이메일매핑**(없으면 NULL), created_at/updated_at=클라우드값, external_id=클라우드 uuid, external_source=`plane-cloud`, sort_order, is_draft.
+2. `issue_sequences` — issue_id, sequence=seq_id, project, workspace, deleted=false.
+3. `issue_assignees`·`issue_labels` — 매핑된 id로 bulk_create(라벨 없으면 생성).
+4. `issue_comments` — comment_html/json/stripped, actor_id·created_by_id=이메일매핑, created_at=원본, external_id.
+5. `issue_links` — url dedup.
+6. **2차 패스**: parent_id 업데이트(모든 이슈 존재 후).
+7. **페이지**: `pages`(description_binary 포함, owned_by_id=이메일매핑 or 이관유저, external_id) + `project_pages` 링크. 워크스페이스-글로벌 페이지는 `is_global=true`.
+
+### 8.4 실행 방식 (권장)
+- **In-container Django ORM 스크립트**: `docker exec plane-api-1 python manage.py shell` 또는 standalone `django.setup()` 스크립트. 순수 SQL보다 **타입·FK 안전**하고 bulk_create가 seq 보존.
+- **advisory lock 불필요**: freeze로 단일 writer 보장 시 동시성 없음.
+- **dry-run 기본**: 카운트·매핑 미스(무매칭 state/label/user) 리포트만 → `--execute`로만 실제 삽입.
+- **프로젝트별 atomic 트랜잭션** → 실패 시 그 프로젝트만 롤백.
+
+### 8.5 리스크 & 완화
+| 리스크 | 완화 |
+|---|---|
+| DB에 (project,seq) 유니크 없음 → 중복 삽입 가능 | external_id 사전필터 + dry-run 카운트 검토. 델타가 max 위쪽이라 실질 충돌 0 |
+| signal 우회로 부수효과 누락(검색벡터·activity·notification) | description_stripped는 저장컬럼이라 직접 채움. activity/notification 누락은 이관에 바람직. IssueVersion 미사용 확인됨 |
+| FK 무결성(state/user 무매핑) | state 이름 무매칭 시 생성 or 기본상태 폴백, user 무매칭 시 created_by NULL(허용). dry-run이 미매핑 리포트 |
+| 페이지 owned_by_id NOT NULL | 이메일 매핑 실패 시 이관 유저로 폴백 |
+| 잘못 삽입 롤백 | 사전 백업(§4.2) + external_source=`plane-cloud` 태그로 선별 soft-delete 가능 |
+| collaborative(Yjs) 문서 동기화 | binary는 넣지만 live 서버(hocuspocus) 캐시와 정합은 페이지 최초 오픈 시 재수화 — 검증 필요 |
+
+### 8.6 API vs DB-write 선택 매트릭스
+| 원하는 것 | 공개 API | 직접 DB-write |
+|---|---|---|
+| 본문·상태·라벨·담당자·코멘트 | ✅ | ✅ |
+| created_at/작성자 | ✅(이메일매핑) | ✅(이메일매핑) |
+| **이슈 번호(seq_id) 정확 보존** | ❌ | ✅ |
+| **페이지 Yjs 협업본문(binary)** | ❌(HTML만) | ✅ |
+| **페이지 멱등(external_id)** | ❌(이름 dedup) | ✅ |
+| 구현·검증 공수 | 낮음 | 중간(스키마 정합·트랜잭션) |
+| 안전망(DB 제약·signal) | 높음(정식경로) | 낮음(스크립트가 책임) |
+
+**권고**: 이슈 번호를 외부에서 참조(예: 슬랙·문서에 `TEAMDEV-395`)하거나 페이지 협업본문 보존이 중요하면 **DB-write 채택**. 이 팀은 번호로 태스크를 자주 인용하므로(예: ALLCL-177/178 사건) **DB-write 경로가 실질적으로 더 적합**. 실행 전 **복구 드릴 1회 필수**(안전망이 백업뿐). 스캐폴드=`scripts/plane-migration/11_dbwrite_issues.py`(dry-run 기본, in-container 실행).
 
 ## 참고 (재사용 커맨드)
 - 클라우드 읽기: `. /srv/shared/app-src/task-bot/.env` → `curl -H "X-API-Key: $PLANE_API_TOKEN" -H "User-Agent: mote" https://api.plane.so/api/v1/workspaces/motemote/...`

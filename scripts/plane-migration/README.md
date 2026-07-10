@@ -100,6 +100,8 @@ Handy flags (all scripts): `--project GROWTH` (repeatable, limit to projects),
 | `20_migrate_pages.py` | `--execute` | Create pages (`description_html` only) deduped by NAME. |
 | `30_migrate_attachments.py` | `--execute` | OPTIONAL/SLOW: download cloud attachment → S3 presigned re-upload → mark uploaded. Idempotent by `external_id`. |
 | `90_verify.py` | never | Assert every cloud issue UUID is an `external_id` on self-host (missing = 0). Exit non-zero on mismatch. |
+| `11_dbwrite_issues.py` | `--execute` | **Alternative DB-write path** (§7): Django ORM `bulk_create()` inside `plane-api-1`, preserves exact `sequence_id`. Standalone (no `common.py` import). |
+| `21_dbwrite_pages.py` | `--execute` | **Alternative DB-write path** (§7): same pattern for pages, preserves `description_binary` + true `external_id` dedup. Standalone. |
 
 ---
 
@@ -154,12 +156,87 @@ the run.**
 
 ---
 
-## 6. Final verification checklist
+## 7. Alternative: DB-write path (preserves seq_id + page binary)
+
+`11_dbwrite_issues.py` and `21_dbwrite_pages.py` are a **separate, riskier**
+path that runs Django ORM `bulk_create()` **inside `plane-api-1`**, bypassing
+the public API entirely. Use this only if the public-API path's limitations
+(§4 above) are unacceptable. See doc
+`docs/mote-design/11-cloud-to-selfhost-migration-plan.md` §8. **They are
+scaffolds** — dry-run-default, `--execute` required, nothing runs
+automatically, same as every other script here — but they write directly to
+production tables with **no db-level unique-constraint safety net** (see
+below), so a **DB backup + a practiced recovery drill are required before the
+first `--execute`**, not just recommended.
+
+**What this path preserves that the API path can't:**
+- **Exact issue `sequence_id` numbers**, including across TEAMDEV's gaps.
+  `bulk_create()` bypasses `Issue.save()` (which is what overwrites
+  `sequence_id` on the API path), so a `sequence_id` we set is inserted
+  verbatim — we then also manually create the matching `IssueSequence` row
+  that `save()` would normally create.
+- **Page `description_binary`** (the Yjs collaborative state) — the ORM
+  `Page` model has no serializer to hide it from us.
+- **True external_id idempotency for pages** — the `pages` table has
+  `external_id`/`external_source` columns even though the public
+  `PageCreateSerializer` doesn't expose them; the DB-write script dedups by
+  the real cloud UUID instead of by name.
+- **Workspace-level ("orphan") pages** — no project link needed at the DB
+  layer, unlike the public API which has no workspace-level create endpoint.
+
+**What it still can't do:** reconstruct page parent/child nesting (the
+public API — which is the only data source both paths use — never exposes a
+page's `parent` at all, so this is a hard ceiling regardless of write path).
+
+**No self-host API token needed** — these run as the Django process itself
+(no `APIKeyAuthentication`), only the cloud `PLANE_API_TOKEN`. Token minting
+(§1.2) is **not required** for this path.
+
+**Must run inside the container** — `plane-api-1` has **no bind mount** for
+this repo (only the `plane_logs_api` volume), so each script must be copied
+in before running:
+
+```bash
+scp scripts/plane-migration/11_dbwrite_issues.py server3:/tmp/
+ssh server3 'docker cp /tmp/11_dbwrite_issues.py plane-api-1:/code/11_dbwrite_issues.py'
+ssh server3 'docker exec -e PLANE_API_TOKEN="$(grep -m1 PLANE_API_TOKEN /srv/shared/app-src/task-bot/.env | cut -d= -f2-)" plane-api-1 python /code/11_dbwrite_issues.py'              # dry-run
+ssh server3 'docker exec -e PLANE_API_TOKEN="$(grep -m1 PLANE_API_TOKEN /srv/shared/app-src/task-bot/.env | cut -d= -f2-)" plane-api-1 python /code/11_dbwrite_issues.py --execute'    # writes
+```
+
+Same pattern for `21_dbwrite_pages.py`, which additionally requires
+`--owner-email you@motemote.com` (a self-host user email; `pages.owned_by_id`
+is `NOT NULL` and not every cloud page owner maps to a self-host member).
+
+**Why no db-level safety net:** the `issues` table's only unique constraint
+is `PK(id)`. There is **no** `UNIQUE(project_id, sequence_id)` — that
+invariant is enforced only by `Issue.save()`'s Postgres advisory lock, which
+`bulk_create()` skips entirely. `11_dbwrite_issues.py`'s own `external_id`
+pre-filter is the only thing preventing a duplicate-sequence write. The
+measured delta is entirely **above** each project's current self-host max
+sequence (GROWTH 68→69–136, ALLCL 182→183–197, STORE 62→63–67, MOTEERP
+71→72–73, TEAMDEV 388→389–410), so a real collision isn't expected on a
+clean first run — but nothing in the schema stops one on a second, mistaken
+run against already-migrated data with a different external_source, for
+example. Treat the backup as load-bearing, not a formality.
+
+**Run order when using this path instead of §2:**
+
+```bash
+python3 00_preflight.py            # still read-only, still useful (on server3, outside the container)
+# ... copy + run 11_dbwrite_issues.py inside plane-api-1 (dry-run, then --execute) ...
+# ... copy + run 21_dbwrite_pages.py inside plane-api-1 (dry-run, then --execute) ...
+python3 90_verify.py --strict-seq  # now seq-number equality SHOULD hold — use --strict-seq to assert it
+```
+
+---
+
+## 8. Final verification checklist
 
 - [ ] `00_preflight.py` shows the expected per-project delta and the token check passes.
-- [ ] `10_migrate_issues.py` (dry-run) would-create count ≈ 123; then `--execute` reports 0 failures.
-- [ ] `20_migrate_pages.py` dry-run reviewed (name-dedup understood) then executed.
+- [ ] **If using the DB-write path**: fresh backup taken and a recovery drill practiced before the first `--execute`.
+- [ ] `10_migrate_issues.py` (dry-run) would-create count ≈ 123; then `--execute` reports 0 failures. (Or `11_dbwrite_issues.py` if using the DB-write path.)
+- [ ] `20_migrate_pages.py` dry-run reviewed (name-dedup understood) then executed. (Or `21_dbwrite_pages.py` for binary + true external_id dedup.)
 - [ ] (optional) `30_migrate_attachments.py` executed if attachment fidelity is required.
 - [ ] **`90_verify.py` exits 0** — every cloud issue UUID is covered on self-host (**missing = 0**).
-- [ ] Spot-check a TEAMDEV issue in the self-host UI (seq number will differ — expected).
-- [ ] Migration token revoked.
+- [ ] API path only: spot-check a TEAMDEV issue in the self-host UI (seq number will differ — expected). DB-write path: `90_verify.py --strict-seq` should also pass.
+- [ ] Migration token revoked (API path only — DB-write path uses no self-host token).
