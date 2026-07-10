@@ -51,6 +51,43 @@
 
 **핵심 판단**: `created_at`·작성자·활동이력까지 보존해야 하면 API로는 불가 → 셀프호스트 Postgres에 직접 쓰는 방식 필요(리스크 큼). 실용적으로는 **본문·상태·코멘트만 보존**(누가 언제는 근사)해도 업무 연속성엔 충분 → API 재동기화 권장.
 
+### 2.1 라이브 feasibility 검토 (2026-07-10, read-only 실측)
+
+> otro 주말 계획 = **클라우드의 모든 데이터(워크아이템·페이지 등)를 셀프호스트로 전량 가져오기**. 아래는 "가져올 수 있는가"를 공개 API GET으로 직접 찔러 확인한 결과. **쓰기 0건.**
+
+| 데이터 타입 | 공개 API로 pull | 실측 |
+|---|---|---|
+| 워크아이템(이슈) | ✅ 전량 | 필드: `name·description_html·description_binary·sequence_id·priority·state·assignees·labels·parent·cycle_id·start_date·target_date·created_at·created_by·external_id` 등 노출. GROWTH 135건 페이징 확인 |
+| **페이지(위키)** | ✅ **본문까지** | `/pages/`(워크스페이스 17) + `/projects/{id}/pages/`(프로젝트별). detail에 `description_binary`(Yjs 편집원본 base64) + `description_html`(2350자 실HTML) + `description_json` 모두 존재 → **편집원본 그대로 이관 가능**(HTML 근사 아님) |
+| 이슈 코멘트 | ✅ | `/issues/{id}/comments/` count 확인 |
+| 이슈 링크 | ✅ | `/issues/{id}/links/` |
+| 이슈 첨부 | ✅ 목록 O | `/issues/{id}/issue-attachments/` 응답 O. 파일 바이너리는 presigned S3 다운로드 후 재업로드 필요 |
+| sub-issue 계층 | ✅ | 전용 `/sub-issues/`는 404지만 이슈 `parent` 필드로 복원 |
+| 활동이력 | ✅ 조회 O | `/issues/{id}/activities/`. 단 시스템 감사로그라 **재현 이관 부적합**(제외 권장) |
+| 사이클·모듈·상태·라벨·멤버 | ✅ | 프로젝트별 전부 200 |
+| 컬렉션(페이지 폴더) | ✅ | 페이지에 `collection_id` 노출 |
+
+**READ vs WRITE 구분(위 §2 표의 `❌`는 WRITE 기준)**: `created_at`/`created_by`는 **읽기로는 다 나온다**. 잃는 건 **재생성(POST) 시점** — 공개 POST가 created_at 무시·작성자를 토큰소유자로 스탬프하기 때문. 원본 타임스탬프/작성자까지 보존하려면 (a) 셀프호스트 **직접 DB write**, 또는 (b) 포크 확장 API가 `created_at`/`external_id` 명시 기입을 받아주는지 확인 후 사용. **이슈에 `external_id`/`external_source` 필드가 있어 external_id=클라우드 UUID로 멱등 재이관(재실행 중복방지) 가능.**
+
+**결론**: 워크아이템·페이지(본문 포함) 포함 **클라우드의 거의 모든 데이터가 공개 API로 pullable**. 제약은 "가져오기(READ)"가 아니라 **"자체호스트에 쓸 때(WRITE)"** 있음 → §2.2.
+
+### 2.2 WRITE 쪽 계약 실측 (2026-07-10, 포크 API 코드 확인)
+
+> 자체호스트 포크 공개 v1 API의 **생성(create) serializer/view**를 직접 읽어 확정. 이게 스크립트가 보존할 수 있는 것의 실제 상한. 정본 스크립트+런북 = `scripts/plane-migration/`(dry-run 기본).
+
+| 항목 | WRITE 보존 | 근거 |
+|---|---|---|
+| 제목·description_html·우선순위·상태·라벨·담당자·일정·parent | ✅ | 이슈 create serializer 수용 |
+| **`created_at`/`created_by`** | ✅ 보존됨 | view가 save 후 세팅. 단 `created_by`는 자체호스트 유저 id여야 → **이메일로 매핑**(`/members/`), 미스매치 시 토큰 유저로 폴백 |
+| `external_id`/`external_source` | ✅ | 이슈·코멘트·라벨 수용 → **멱등 재이관**(재실행 skip) 가능 |
+| **`sequence_id`(이슈 번호)** | ❌ **공개 API로 불가** | `Issue.save()`가 `last_seq+1`로 덮음. **연속 gap 없는 프로젝트만 우연히 번호 일치**(GROWTH·ALLCL·STORE·MOTEERP 예상 일치). **TEAMDEV는 gap 있어 번호 어긋남.** 정확 번호 보존은 **직접 DB write만**(risky, 미승인 경로). 검증은 번호일치가 아니라 **커버리지(누락 0)** 기준 |
+| **페이지 본문** | ⚠️ **HTML만** | 페이지 create serializer는 `name·description_html·access`만 수용. **`description_binary`(Yjs) 못 받음** → 텍스트는 보존되나 협업 편집 원본/일부 임베드 유실. **`external_id` 없음 → 이름으로만 dedup**(리네임 재실행 시 중복 위험). **워크스페이스-레벨(프로젝트 미연결) 페이지는 create 불가** → 수동 |
+| 첨부파일 | ⚠️ 별도 패스 | presigned 다운로드→재업로드(느림, 선택) |
+| 이슈 링크 | ⚠️ `external_id` 없음 → URL로 dedup | 중복 URL은 서버 409 |
+| 반응·활동이력 | ❌ | 재현 부적합(제외) |
+
+**주말 결정 필요**: (1) 이슈 번호 정확 보존이 필요하면(예: 외부에서 TEAMDEV-395 식 참조) 공개 API론 부족 → 직접 DB write 경로 별도 검토·승인. 아니면 커버리지 기준 수용. (2) 페이지 협업본문(binary) 보존 필요 여부 — 필요시 직접 DB write, 아니면 HTML로 충분.
+
 ## 3. 토큰·접근 인벤토리 (2026-07-09 실측)
 
 | 대상 | 위치 | 상태 |
@@ -76,7 +113,7 @@
 이관 직전 최신 덤프: `bash /srv/shared/stack/server3-data/plane-backup.sh` 실행 → `/data/backups/server3/plane/daily`. **복구 드릴 1회 필수**(스크래치 스택에 `pg_restore`, `--restore-test`). → [문서10] P1 항목과 동일.
 
 ### 4.3 3단계 — 델타 이슈 재동기화 (멱등)
-- **범위**: 프로젝트별 `(클라우드 seq_id 집합) − (셀프호스트 seq_id 집합)` = 누락 seq만(≈110). GROWTH·TEAMDEV·ALLCL·STORE·MOTEERP.
+- **범위**: 프로젝트별 `(클라우드 seq_id 집합) − (셀프호스트 seq_id 집합)` = 누락 seq만. **7/10 정밀 실측 = 총 123건**: GROWTH 68(seq 69–136)·TEAMDEV 33(389–410 일부 gap)·ALLCL 15(183–197)·STORE 5(63–67)·MOTEERP 2(72–73). (전량 재이관을 택하면 이미 있는 것은 external_id 멱등으로 skip.)
 - **멱등 키**: `(project, sequence_id)` 또는 `external_id` 로 skip-if-exists → 재실행해도 중복 생성 안 함.
 - **쓰기 대상**: 셀프호스트 확장 API(seq_id 명시 지원). 새 셀프호스트 API 키 발급 필요.
 - **보존 범위**: 제목·설명·상태·우선순위·라벨·코멘트. `created_at`/작성자는 근사(API 한계) 또는 설명에 원 메타 주석.
@@ -116,10 +153,20 @@
 > **승인 필요 지점**: (a) 1단계 freeze(운영 스크립트 수정), (b) 3단계 실제 쓰기 실행. 나머지(백업·dry-run·검증)는 read-only/안전이라 선실행 가능.
 
 ## 7. 열린 질문 (otro 결정 필요)
-1. **`created_at`/작성자 보존이 중요한가?** 아니오면 API 재동기화로 충분. 예면 직접 DB 쓰기(리스크↑) 검토.
-2. **첨부파일 이관 범위**: 전체 vs 최근/특정 프로젝트만 vs 생략.
+
+> **가져올 수 있는가? = 예 (2026-07-10 §2.1 라이브 확인).** 워크아이템·페이지(본문 포함) 전량 pullable. 남은 건 아래 정책 결정뿐. **주말 실행 예정 — 그 전 착수 금지.**
+
+1. **`created_at`/작성자 보존이 중요한가?** 아니오면 API 재동기화로 충분(작성일=이관일, 작성자=설명 주석). 예면 셀프호스트 직접 DB write 또는 포크 확장 API의 created_at/external_id 명시 기입 경로 검증 필요.
+2. **첨부파일 이관 범위**: 전체 vs 최근/특정 프로젝트만 vs 생략. (파일별 S3 다운로드→재업로드 공수)
 3. **컷오버 후 클라우드 워크스페이스**: 언제 구독 해지/삭제할지(안정화 기간).
-4. **freeze 즉시 착수 승인 여부**(드리프트가 계속 커지므로 권장).
+4. **freeze 착수 시점**: 주말 이관과 함께 할지, 그 전에 먼저 드리프트만 멈출지.
+5. **범위 = 전량 vs 델타**: otro 의사 = "클라우드 모든 데이터 다 가져오기". 실무상 셀프호스트가 이미 7/2 이관분 보유(ALLCL 182·TEAMDEV 388 등) → **external_id 멱등 전량 재이관**(있으면 skip)이 안전. 순수 wipe-and-redo는 셀프호스트 전용 PLANE/IDEA·커스텀 포크데이터 유실 위험이라 **비권장**.
+
+### 남은 선결 블로커 (주말 실행 전 준비)
+- **셀프호스트 일반 API 쓰기 토큰 발급** (현재 디스크에 없음 — §3). Django `APIToken`/관리 커맨드로 발급.
+- **멱등 델타/전량 재이관 스크립트 작성** + dry-run(생성 0, diff 리포트만).
+- **복구 드릴 1회**(백업은 매일 있음, 검증된 restore 이력만 부재 — 문서10 P1).
+- 페이지 이관은 `description_binary`(Yjs) 그대로 write 하는 경로 확인 필요(포크 페이지 생성 API가 binary 수용하는지).
 
 ## 참고 (재사용 커맨드)
 - 클라우드 읽기: `. /srv/shared/app-src/task-bot/.env` → `curl -H "X-API-Key: $PLANE_API_TOKEN" -H "User-Agent: mote" https://api.plane.so/api/v1/workspaces/motemote/...`
