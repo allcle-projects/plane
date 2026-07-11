@@ -6,9 +6,10 @@
 11 - ALTERNATIVE PATH: direct DB-write issue migration via Django ORM.
 
 Preserves what the public API (10_migrate_issues.py) cannot:
-  * exact cloud issue sequence_id numbers (even across TEAMDEV's gaps)
-  * author/timestamp fidelity is the same either way; this path is only
-    needed for sequence_id (and, for pages, the Yjs binary — see
+  * exact cloud issue sequence_id numbers, WHERE POSSIBLE (see "MERGE
+    ALGORITHM" below — this is now project-dependent, not universal)
+  * author/timestamp fidelity is the same either way; this path exists for
+    sequence_id preservation (and, for pages, the Yjs binary — see
     21_dbwrite_pages.py)
 
 THIS IS A SCAFFOLD. Dry-run is the hard default; --execute is required for
@@ -17,8 +18,7 @@ selfhost-migration-plan.md §7/§8 and take a DB backup + do a recovery drill
 BEFORE the first --execute, because `issues` has NO db-level unique
 constraint on (project_id, sequence_id) — only Issue.save()'s advisory lock
 enforces it, and bulk_create() bypasses save() entirely, so there is no
-safety net against a bad run creating duplicate sequence numbers. This
-script's own external_id pre-filter is the only de-dup guard.
+safety net against a bad run creating duplicate sequence numbers.
 
 STANDALONE BY DESIGN: this file does not import common.py (the api
 container has no bind mount for the local repo — see run command below —
@@ -26,7 +26,89 @@ so only this single file is guaranteed to be present). It has its own
 minimal urllib-based cloud client.
 
 =============================================================================
-MECHANISM (confirmed by reading the fork source on server3, 2026-07-10)
+REVISION 2026-07-11 — the external_id-only dedup premise was WRONG and has
+been replaced. A dry-run against real data showed it would create 902
+duplicate issues. Root causes, confirmed against cloud + self-host DB:
+=============================================================================
+1. NO existing self-host issue has external_id set, on any project (the
+   7/2 migration never set it). An external_id-only pre-filter therefore
+   matches nothing — every cloud issue looks "new", including the ~700
+   issues already migrated on 7/2. Fixed by adding a second recognition
+   path: (sequence_id, name) equality against every existing self-host
+   issue identifies the 7/2-migrated ones without needing external_id.
+2. Post-7/2, cloud and self-host diverged independently and in some
+   projects BOTH sides created new issues, re-using the same sequence
+   numbers for genuinely different content:
+     - ALLCL: aligned (cloud seq N == self-host seq N, same name) through
+       seq 178. Self-host 179-182 are its OWN new issues (unrelated to
+       cloud). Cloud 179-197 are different drift issues. Same numbers,
+       different content -> a collision if we tried to preserve cloud's
+       numbers.
+     - TEAMDEV: self-host has 3 own new issues at seq 386-388; cloud's
+       tail differs from those -> same collision shape.
+     - GROWTH, STORE, MOTEERP: self-host has ZERO post-cutover issues of
+       its own (stopped exactly where cloud diverged) -> the cloud drift
+       sequence numbers are genuinely free on self-host -> safe to
+       preserve verbatim.
+   See "MERGE ALGORITHM" below for how this is now handled per project.
+
+=============================================================================
+MERGE ALGORITHM (per in-scope project, otro-approved 2026-07-11)
+=============================================================================
+Preload (read-only ORM queries against the self-host project):
+  by_ext        = {external_id: Issue} for rows with external_source=
+                  'plane-cloud' (re-run idempotency for issues WE created
+                  in a prior run of this script)
+  by_seq_name   = {(sequence_id, name): Issue} for every existing issue in
+                  the project (identifies the 7/2-aligned rows without
+                  needing external_id)
+  occupied_seqs = set of every existing sequence_id in the project
+  sh_max_seq    = max(occupied_seqs), or 0
+
+Classify each cloud issue C, in ascending cloud sequence_id order:
+  1. C.id in by_ext                       -> SKIP_EXT (we already imported
+                                              this drift issue in a prior
+                                              run; still needed for parent-
+                                              linkage resolution, but its
+                                              comments are not re-synced —
+                                              see "comments scope" below)
+  2. (C.sequence_id, C.name) in by_seq_name -> SKIP_ALIGNED (this IS the
+                                              7/2-migrated issue; never
+                                              touched, no comments)
+  3. otherwise                            -> DRIFT (needs importing this
+                                              run)
+
+Decide the project's mode from the DRIFT set only:
+  append_mode = any(d.sequence_id in occupied_seqs for d in drift)
+  # True exactly when a drift issue's own cloud sequence number is already
+  # taken by something on self-host (aligned or not) -> whole-project
+  # switch, not per-issue, because interleaving preserved-and-appended
+  # numbers within one project would be confusing and isn't what otro
+  # approved. Confirmed: True for ALLCL/TEAMDEV, False for GROWTH/STORE/
+  # MOTEERP (and trivially False for MOTEDIGITA, which has no delta).
+
+Assign each DRIFT issue a target sequence_id, in ascending cloud-seq order:
+  preserve mode (append_mode is False): target = C.sequence_id (verbatim —
+    every drift seq in this project is confirmed free)
+  append mode (append_mode is True): target = counter, counter starting at
+    sh_max_seq + 1 and incremented per drift issue. Cloud's own numbers are
+    NOT preserved for these two projects — physically impossible without
+    evicting an unrelated self-host-native issue that already owns that
+    number.
+
+Comments/links/parent-linkage scope: only run for the DRIFT issues actually
+bulk_created THIS run (i.e. NOT for SKIP_ALIGNED, and NOT for SKIP_EXT
+either — those were already synced when they were first created in an
+earlier run). Parent resolution still needs to reach into SKIP_EXT and
+SKIP_ALIGNED issues, though: a drift issue's cloud `parent` may point at an
+already-aligned or already-imported issue, so `resolve_sh_issue_id()`
+checks, in order: this run's freshly created issues, then by_ext, then
+by_seq_name (via a cloud_id -> (seq, name) map built from the full cloud
+issue list, not just drift).
+
+=============================================================================
+MECHANISM — why bulk_create() requires all this manual bookkeeping
+(confirmed by reading the fork source on server3, 2026-07-10)
 =============================================================================
 - apps/api/plane/db/models/issue.py Issue.save(): on create, takes a
   per-project Postgres advisory lock, then sets
@@ -44,7 +126,8 @@ MECHANISM (confirmed by reading the fork source on server3, 2026-07-10)
   inserted VERBATIM. Nothing else auto-populates it, so we MUST set it.
 - Because Issue.save() is skipped, we must ALSO manually:
     * create the matching IssueSequence row ourselves (normally done inside
-      Issue.save()'s transaction)
+      Issue.save()'s transaction), using the ASSIGNED target sequence, not
+      necessarily cloud's own sequence_id
     * set description_stripped ourselves (normally stripped in save())
     * set workspace_id on every ProjectBaseModel-derived row we build
       (IssueAssignee, IssueLabel, IssueSequence, IssueComment) — their
@@ -59,7 +142,7 @@ MECHANISM (confirmed by reading the fork source on server3, 2026-07-10)
   as a limitation; harmless for read/display, matters only for the live
   collaborative editor's version history on that comment.
 - issue_versions has 0 rows for 822 existing issues (confirmed via DB query)
-  → IssueVersion is unused on this deployment. Skipping its sync signal by
+  -> IssueVersion is unused on this deployment. Skipping its sync signal by
   using bulk_create is harmless and, if anything, avoids notification/
   activity-log noise from a synthetic import.
 - IssueLink is intentionally NOT migrated by this script (not requested;
@@ -93,11 +176,11 @@ CONFIRMED IMPORTS / SCHEMA (apps/api/plane/db/models/, 2026-07-10)
     created_at/updated_at(NOT NULL).
   `issues` unique constraint = PK(id) ONLY. No db unique on
   (project_id, sequence_id) — application-level advisory lock only, which
-  bulk_create bypasses. The delta is entirely ABOVE current self-host max
-  seq per project (GROWTH 68→69-136, ALLCL 182→183-197, STORE 62→63-67,
-  MOTEERP 71→72-73, TEAMDEV 388→389-410), so no real collision is expected
-  — but nothing in the schema enforces that; this script's external_id
-  pre-filter is the guard.
+  bulk_create bypasses. See "REVISION 2026-07-11" and "MERGE ALGORITHM"
+  above for how real per-project collisions (ALLCL, TEAMDEV) are now
+  handled — this script's own classification (by_ext + by_seq_name) plus
+  the whole-project append-mode switch is the guard, NOT a bare external_id
+  pre-filter (that premise was disproven).
 
 =============================================================================
 RUN COMMAND (verified 2026-07-10 — plane-api-1 has NO bind mount for the
@@ -117,7 +200,9 @@ via manage.py's os.environ.setdefault, not overridden in the compose env)
   #    APIKeyAuthentication involved):
   ssh server3 'docker exec -e PLANE_API_TOKEN="$(grep -m1 PLANE_API_TOKEN /srv/shared/app-src/task-bot/.env | cut -d= -f2-)" plane-api-1 python /code/11_dbwrite_issues.py'
 
-  # 3. execute for real (same command + --execute):
+  # 3. execute for real (same command + --execute) — DO NOT RUN until the
+  #    dry-run output (mode/skip_aligned/skip_ext/create counts per project)
+  #    has been reviewed:
   ssh server3 'docker exec -e PLANE_API_TOKEN="$(grep -m1 PLANE_API_TOKEN /srv/shared/app-src/task-bot/.env | cut -d= -f2-)" plane-api-1 python /code/11_dbwrite_issues.py --execute'
 
 Flags: --execute (default dry-run), --project IDENTIFIER (repeatable),
@@ -129,6 +214,7 @@ import base64
 import json
 import os
 import sys
+import time
 import uuid
 import urllib.error
 import urllib.parse
@@ -201,12 +287,26 @@ class CloudClient:
                 "Accept": "application/json",
             },
         )
-        try:
-            with urllib.request.urlopen(req, timeout=60) as resp:
-                return resp.status, json.loads(resp.read().decode("utf-8") or "{}")
-        except urllib.error.HTTPError as exc:
-            body = exc.read().decode("utf-8", errors="replace")
-            return exc.code, _maybe_json(body)
+        # Baseline throttle + exponential backoff: cloud SaaS enforces a rate
+        # limit (429 RATE_LIMIT_EXCEEDED) and the per-issue comment/link fan-out
+        # trips it easily. Honor Retry-After when present.
+        for attempt in range(7):
+            time.sleep(0.6)
+            try:
+                with urllib.request.urlopen(req, timeout=60) as resp:
+                    return resp.status, json.loads(resp.read().decode("utf-8") or "{}")
+            except urllib.error.HTTPError as exc:
+                if exc.code == 429 or exc.code >= 500:
+                    retry_after = (exc.headers.get("Retry-After") if exc.headers else None) or ""
+                    delay = float(retry_after) if retry_after.isdigit() else min(60.0, 2 ** attempt)
+                    time.sleep(delay)
+                    continue
+                body = exc.read().decode("utf-8", errors="replace")
+                return exc.code, _maybe_json(body)
+            except urllib.error.URLError:
+                time.sleep(min(60.0, 2 ** attempt))
+                continue
+        raise RuntimeError(f"cloud GET {path} failed after 7 retries (rate limit/network)")
 
     def paginated(self, path, params=None, page_size=100):
         params = dict(params or {})
@@ -300,13 +400,83 @@ def get_or_create_label(project, workspace, name, color, execute, cache_by_name,
 
 
 # --------------------------------------------------------------------------- #
+# Classification (the fixed dedup/merge algorithm — see module docstring)
+# --------------------------------------------------------------------------- #
+def classify_issues(cloud_issues, sh_project):
+    """Return (by_ext, by_seq_name, occupied_seqs, sh_max_seq, skip_ext,
+    skip_aligned, drift, cloud_id_to_seqname).
+
+    cloud_issues must already be sorted ascending by sequence_id.
+    """
+    by_ext = {
+        i.external_id: i
+        for i in Issue.objects.filter(project=sh_project, external_source=EXTERNAL_SOURCE).exclude(
+            external_id__isnull=True
+        )
+    }
+    by_seq_name = {
+        (i.sequence_id, i.name): i for i in Issue.objects.filter(project=sh_project).only("id", "sequence_id", "name")
+    }
+    occupied_seqs = {i.sequence_id for i in Issue.objects.filter(project=sh_project).only("sequence_id")}
+    sh_max_seq = max(occupied_seqs) if occupied_seqs else 0
+
+    skip_ext, skip_aligned, drift = [], [], []
+    cloud_id_to_seqname = {}
+    for issue in cloud_issues:
+        seq = issue.get("sequence_id")
+        name = issue.get("name") or ""
+        cloud_id_to_seqname[issue["id"]] = (seq, name)
+        if issue["id"] in by_ext:
+            skip_ext.append(issue)
+        elif (seq, name) in by_seq_name:
+            skip_aligned.append(issue)
+        else:
+            drift.append(issue)
+
+    return by_ext, by_seq_name, occupied_seqs, sh_max_seq, skip_ext, skip_aligned, drift, cloud_id_to_seqname
+
+
+def assign_targets(drift, occupied_seqs, sh_max_seq):
+    """Return (append_mode, {cloud_issue_id: target_sequence_id})."""
+    append_mode = any(d.get("sequence_id") in occupied_seqs for d in drift)
+    targets = {}
+    counter = sh_max_seq + 1
+    for d in drift:  # already ascending cloud-seq order
+        if append_mode:
+            targets[d["id"]] = counter
+            counter += 1
+        else:
+            targets[d["id"]] = d["sequence_id"]
+    return append_mode, targets
+
+
+def make_resolver(cloud_to_new, by_ext, by_seq_name, cloud_id_to_seqname):
+    """cloud issue id -> self-host issue id, across all three buckets
+    (freshly created this run / previously-imported drift / 7/2-aligned)."""
+
+    def resolve(cloud_id):
+        if cloud_id in cloud_to_new:
+            return cloud_to_new[cloud_id]
+        existing = by_ext.get(cloud_id)
+        if existing:
+            return existing.id
+        seqname = cloud_id_to_seqname.get(cloud_id)
+        if seqname and seqname in by_seq_name:
+            return by_seq_name[seqname].id
+        return None
+
+    return resolve
+
+
+# --------------------------------------------------------------------------- #
 # Migration
 # --------------------------------------------------------------------------- #
 def migrate_project(cloud, ident, cloud_project, sh_project, execute, limit):
     log(f"\n=== {ident} (cloud {cloud_project['id']} -> self-host {sh_project.id}) ===")
     workspace = sh_project.workspace
     stats = {
-        "issues_create": 0, "issues_skip": 0,
+        "mode": None, "skip_aligned": 0, "skip_ext": 0,
+        "issues_create": 0, "target_seq_range": None,
         "assignees_create": 0, "labels_create": 0,
         "comments_create": 0, "comments_skip": 0,
         "parents_linked": 0,
@@ -325,16 +495,25 @@ def migrate_project(cloud, ident, cloud_project, sh_project, execute, limit):
     except RuntimeError:
         cloud_members = {}
 
-    already = set(
-        Issue.objects.filter(project=sh_project, external_source=EXTERNAL_SOURCE)
-        .exclude(external_id__isnull=True)
-        .values_list("external_id", flat=True)
-    )
-    existing_comment_ext = set(
-        IssueComment.objects.filter(project=sh_project, external_source=EXTERNAL_SOURCE)
-        .exclude(external_id__isnull=True)
-        .values_list("external_id", flat=True)
-    )
+    cloud_issues = sorted(cloud.paginated(f"projects/{cloud_pid}/issues/"), key=lambda i: i.get("sequence_id") or 0)
+    if limit:
+        cloud_issues = cloud_issues[:limit]
+
+    (by_ext, by_seq_name, occupied_seqs, sh_max_seq,
+     skip_ext, skip_aligned, drift, cloud_id_to_seqname) = classify_issues(cloud_issues, sh_project)
+
+    stats["skip_ext"] = len(skip_ext)
+    stats["skip_aligned"] = len(skip_aligned)
+
+    append_mode, targets = assign_targets(drift, occupied_seqs, sh_max_seq)
+    stats["mode"] = "append" if append_mode else "preserve"
+    if targets:
+        stats["target_seq_range"] = f"{min(targets.values())}-{max(targets.values())}"
+
+    log(f"  classify: {len(cloud_issues)} cloud issues -> "
+        f"skip_ext={len(skip_ext)} skip_aligned={len(skip_aligned)} drift={len(drift)}")
+    log(f"  mode={stats['mode']} sh_max_seq={sh_max_seq} "
+        f"target_seq_range={stats['target_seq_range']}")
 
     default_state_id = None
     default_state = State.objects.filter(project=sh_project, default=True).first()
@@ -343,30 +522,20 @@ def migrate_project(cloud, ident, cloud_project, sh_project, execute, limit):
     elif sh_states:
         default_state_id = next(iter(sh_states.values()))
 
-    new_issues = []          # Issue instances to bulk_create
+    new_issues = []          # Issue instances to bulk_create (drift only)
     new_sequences = []       # IssueSequence instances (parallel to new_issues)
     new_assignee_rows = []   # IssueAssignee instances
     new_label_rows = []      # IssueLabel instances
-    pending_comments = []    # (cloud_issue_id, cloud_project_id) needing comment sync
-    parents = {}             # cloud_issue_id -> cloud_parent_id
-    cloud_to_new = {}        # cloud_issue_id -> new Issue.id (this run)
+    parents = {}             # cloud_issue_id -> cloud_parent_id (drift only —
+                              # see module docstring "comments scope")
+    cloud_to_new = {}        # cloud_issue_id -> new Issue.id (this run, drift only)
 
     now = timezone.now()
-    count = 0
-    for issue in cloud.paginated(f"projects/{cloud_pid}/issues/"):
-        if limit and count >= limit:
-            break
-        count += 1
+    for issue in drift:
         cid = issue["id"]
         if issue.get("parent"):
             parents[cid] = issue["parent"]
 
-        if cid in already:
-            stats["issues_skip"] += 1
-            pending_comments.append(cid)
-            continue
-
-        # State by name.
         cloud_state_name = cloud_states.get(issue.get("state"), "").strip().lower()
         state_id = sh_states.get(cloud_state_name, default_state_id)
 
@@ -374,14 +543,14 @@ def migrate_project(cloud, ident, cloud_project, sh_project, execute, limit):
         cloud_to_new[cid] = new_id
         html = issue.get("description_html") or "<p></p>"
         binary = issue.get("description_binary")
+        target_seq = targets[cid]
 
         if not execute:
             stats["issues_create"] += 1
             if cloud_state_name and cloud_state_name not in sh_states:
-                warnings.append(f"issue {ident}#{issue.get('sequence_id')}: state "
+                warnings.append(f"issue {ident}#{issue.get('sequence_id')}->target#{target_seq}: state "
                                  f"'{cloud_state_name}' not found on self-host, "
                                  "would fall back to project default")
-            pending_comments.append(cid)
             continue
 
         obj = Issue(
@@ -392,7 +561,7 @@ def migrate_project(cloud, ident, cloud_project, sh_project, execute, limit):
             description_stripped=strip_tags(html) if html else None,
             description_binary=base64.b64decode(binary) if binary else None,
             priority=issue.get("priority") or "none",
-            sequence_id=issue["sequence_id"],
+            sequence_id=target_seq,
             sort_order=issue.get("sort_order") or 65535,
             is_draft=bool(issue.get("is_draft", False)),
             point=issue.get("point"),
@@ -418,7 +587,7 @@ def migrate_project(cloud, ident, cloud_project, sh_project, execute, limit):
             IssueSequence(
                 id=uuid.uuid4(),
                 issue_id=new_id,
-                sequence=issue["sequence_id"],
+                sequence=target_seq,
                 deleted=False,
                 project_id=sh_project.id,
                 workspace_id=workspace.id,
@@ -439,7 +608,7 @@ def migrate_project(cloud, ident, cloud_project, sh_project, execute, limit):
                     )
                 )
             elif aid in cloud_members:
-                warnings.append(f"issue {ident}#{issue.get('sequence_id')}: assignee "
+                warnings.append(f"issue {ident}#{issue.get('sequence_id')}->target#{target_seq}: assignee "
                                  f"'{cloud_members[aid]}' not a self-host member, skipped")
 
         for lid in issue.get("labels") or []:
@@ -463,7 +632,6 @@ def migrate_project(cloud, ident, cloud_project, sh_project, execute, limit):
                 )
 
         stats["issues_create"] += 1
-        pending_comments.append(cid)
 
     if execute and new_issues:
         with transaction.atomic():
@@ -475,16 +643,11 @@ def migrate_project(cloud, ident, cloud_project, sh_project, execute, limit):
             if new_label_rows:
                 IssueLabel.objects.bulk_create(new_label_rows)
 
-    # Comments — for every issue in scope (new or already-present), so a
-    # rerun also backfills any comments missed by a prior partial run.
-    _migrate_comments(
-        cloud, cloud_pid, sh_project, workspace, pending_comments, cloud_to_new,
-        existing_comment_ext, execute, now, stats,
-    )
-
-    # 2nd pass: parent linkage (needs all issues — new + pre-existing — to
-    # already have self-host ids).
-    _link_parents(sh_project, parents, cloud_to_new, existing=already, execute=execute, stats=stats)
+    # Comments/parent-linkage: ONLY for issues created THIS run (drift, not
+    # skip_ext/skip_aligned — see module docstring "comments scope").
+    resolve = make_resolver(cloud_to_new, by_ext, by_seq_name, cloud_id_to_seqname)
+    _migrate_comments(cloud, cloud_pid, sh_project, workspace, drift, cloud_to_new, execute, now, stats)
+    _link_parents(parents, resolve, execute, stats)
 
     log(f"  summary {ident}: {stats}")
     if warnings:
@@ -496,21 +659,19 @@ def migrate_project(cloud, ident, cloud_project, sh_project, execute, limit):
     return stats
 
 
-def _resolve_sh_issue_id(sh_project, cloud_id):
-    return (
-        Issue.objects.filter(project=sh_project, external_id=cloud_id, external_source=EXTERNAL_SOURCE)
-        .values_list("id", flat=True)
-        .first()
+def _migrate_comments(cloud, cloud_pid, sh_project, workspace, drift, cloud_to_new, execute, now, stats):
+    """Sync comments only for issues created THIS run (drift)."""
+    existing_comment_ext = set(
+        IssueComment.objects.filter(project=sh_project, external_source=EXTERNAL_SOURCE)
+        .exclude(external_id__isnull=True)
+        .values_list("external_id", flat=True)
     )
-
-
-def _migrate_comments(cloud, cloud_pid, sh_project, workspace, cloud_issue_ids, cloud_to_new,
-                       existing_comment_ext, execute, now, stats):
     new_comments = []
-    for cid in cloud_issue_ids:
-        sh_iid = cloud_to_new.get(cid) or _resolve_sh_issue_id(sh_project, cid)
+    for issue in drift:
+        cid = issue["id"]
+        sh_iid = cloud_to_new.get(cid)
         if not sh_iid:
-            continue
+            continue  # dry-run: no id was persisted, nothing to attach to
         for comment in cloud.paginated(f"projects/{cloud_pid}/issues/{cid}/comments/"):
             if comment["id"] in existing_comment_ext:
                 stats["comments_skip"] += 1
@@ -542,10 +703,14 @@ def _migrate_comments(cloud, cloud_pid, sh_project, workspace, cloud_issue_ids, 
             stats["comments_create"] = len(new_comments)
 
 
-def _link_parents(sh_project, parents, cloud_to_new, existing, execute, stats):
+def _link_parents(parents, resolve, execute, stats):
+    """Parent linkage only for drift issues (the `parents` dict is only
+    populated from the drift loop in migrate_project). The parent itself
+    may be a drift/skip_ext/skip_aligned issue — resolve() covers all
+    three."""
     for cid, cloud_parent in parents.items():
-        child_id = cloud_to_new.get(cid) or _resolve_sh_issue_id(sh_project, cid)
-        parent_id = cloud_to_new.get(cloud_parent) or _resolve_sh_issue_id(sh_project, cloud_parent)
+        child_id = resolve(cid)
+        parent_id = resolve(cloud_parent)
         if not child_id or not parent_id:
             continue
         if not execute:
@@ -588,9 +753,10 @@ def main():
             continue
         stats = migrate_project(cloud, ident, cloud_projects[ident], sh_projects[ident], execute, args.limit)
         for k, v in stats.items():
-            totals[k] = totals.get(k, 0) + v
+            if isinstance(v, (int, float)):
+                totals[k] = totals.get(k, 0) + v
 
-    log(f"\n{'=' * 60}\nGRAND TOTAL: {totals}")
+    log(f"\n{'=' * 60}\nGRAND TOTAL (numeric fields only; see per-project lines above for mode/range): {totals}")
     if not execute:
         log("DRY-RUN only. Re-run with --execute to perform DB writes.")
 

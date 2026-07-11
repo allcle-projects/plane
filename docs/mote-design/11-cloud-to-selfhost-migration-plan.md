@@ -154,7 +154,12 @@
 
 ## 7. 결정 & 열린 질문
 
-> **가져올 수 있는가? = 예 (2026-07-10 §2.1 라이브 확인).** 워크아이템·페이지(본문 포함) 전량 pullable. **주말 실행 예정 — 그 전 착수 금지.**
+> ## ✅ 1차 이관 실행 완료 (2026-07-11, 경로 B)
+> 이슈 **151 import**(GROWTH 74·TEAMDEV 44·ALLCL 22·MOTEERP 6·STORE 5) + 코멘트 244·담당자 99·라벨 144·parent 78, 페이지 **89**(binary 73). self-host live 이슈 850→1001·페이지 2→91. 전량 `external_source=plane-cloud` 태깅. **멱등 재검증 통과**(재 dry-run create=0, skip_ext 151/89), seq 중복 0, 복구드릴 통과.
+> **dry-run이 계획의 2대 전제 붕괴를 잡음**: ①기존 self-host 이슈에 external_id 전무 → external_id-only dedup이면 902건 중복. ②7/2 이후 cloud·self-host가 독립적으로 같은 seq 재사용(ALLCL 179–182·TEAMDEV 386–388 self-host 자체신규) → 클라 드리프트 seq 보존 불가. 해결 = dedup을 `external_id OR (seq,name)` + 프로젝트별 preserve/append 자동판정(§7-append 결정 반영). 스크립트 반영·커밋.
+> **남은 필수 = FREEZE**(§4.1: ops 4종 리포인트) — 미실행 시 클라우드 계속 드리프트(이관 중에도 +1). 멱등이라 재실행으로 따라잡음. 첨부(30) 미실행.
+>
+> **가져올 수 있는가? = 예 (2026-07-10 §2.1 라이브 확인).** 워크아이템·페이지(본문 포함) 전량 pullable.
 
 1. ✅ **경로 = B(직접 DB-write) 확정** (2026-07-09~10 검토→otro 승인, 2026-07-10). 이슈 번호(seq_id)·페이지 Yjs 본문·페이지 멱등까지 완전 보존. 스크립트=`scripts/plane-migration/11_dbwrite_issues.py`·`21_dbwrite_pages.py`. created_at/작성자는 이메일매핑 보존. **⚠️ 실행 전 백업+복구 드릴 1회 필수**(DB에 (project,seq) 유니크 없음 = 안전망이 백업뿐, §8.2/§8.5).
 2. **첨부파일 이관 범위**: 전체 vs 최근/특정 프로젝트만 vs 생략. (파일별 S3 다운로드→재업로드 공수)

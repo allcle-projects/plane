@@ -20,9 +20,23 @@ Preserves what the public API (20_migrate_pages.py) cannot:
 THIS IS A SCAFFOLD. Dry-run is the hard default; --execute is required for
 any write. Nothing runs automatically. Take a DB backup + do a recovery
 drill BEFORE the first --execute — same caveat as 11_dbwrite_issues.py:
-bulk_create() bypasses Page.save() and any related signals, so this
-script's own external_id pre-filter is the only de-dup guard (though pages
-are lower-risk than issues: there is no cross-row sequence invariant here).
+bulk_create() bypasses Page.save() and any related signals.
+
+=============================================================================
+REVISION 2026-07-11 — same root cause found in 11_dbwrite_issues.py: NO
+existing self-host page has external_id set (the 7/2 migration never set
+it), confirmed against the DB. An external_id-only pre-filter therefore
+matches nothing and would re-create every one of the already-migrated 7/2
+pages as a duplicate. Fixed the same way: dedup now also matches by NAME
+(normalized, case-insensitive) against existing pages in the same scope
+(project-linked pages compared within the project; workspace-level/orphan
+pages compared within the workspace). A cloud page is skipped if it matches
+by external_id OR by name; otherwise it's imported and tagged with
+external_id=cloud page id for clean re-run idempotency going forward.
+Pages have no sequence_id-style cross-row invariant, so there is no
+append-mode/collision concept here — this is a strict two-key dedup, not a
+merge algorithm.
+=============================================================================
 
 STANDALONE BY DESIGN: does not import common.py (no bind mount for the repo
 into plane-api-1 — see run command below). Has its own minimal urllib-based
@@ -102,6 +116,7 @@ import base64
 import json
 import os
 import sys
+import time
 import uuid
 import urllib.error
 import urllib.parse
@@ -167,12 +182,26 @@ class CloudClient:
                 "Accept": "application/json",
             },
         )
-        try:
-            with urllib.request.urlopen(req, timeout=60) as resp:
-                return resp.status, json.loads(resp.read().decode("utf-8") or "{}")
-        except urllib.error.HTTPError as exc:
-            body = exc.read().decode("utf-8", errors="replace")
-            return exc.code, _maybe_json(body)
+        # Baseline throttle + exponential backoff: cloud SaaS enforces a rate
+        # limit (429 RATE_LIMIT_EXCEEDED) and the per-issue comment/link fan-out
+        # trips it easily. Honor Retry-After when present.
+        for attempt in range(7):
+            time.sleep(0.6)
+            try:
+                with urllib.request.urlopen(req, timeout=60) as resp:
+                    return resp.status, json.loads(resp.read().decode("utf-8") or "{}")
+            except urllib.error.HTTPError as exc:
+                if exc.code == 429 or exc.code >= 500:
+                    retry_after = (exc.headers.get("Retry-After") if exc.headers else None) or ""
+                    delay = float(retry_after) if retry_after.isdigit() else min(60.0, 2 ** attempt)
+                    time.sleep(delay)
+                    continue
+                body = exc.read().decode("utf-8", errors="replace")
+                return exc.code, _maybe_json(body)
+            except urllib.error.URLError:
+                time.sleep(min(60.0, 2 ** attempt))
+                continue
+        raise RuntimeError(f"cloud GET {path} failed after 7 retries (rate limit/network)")
 
     def paginated(self, path, params=None, page_size=100):
         params = dict(params or {})
@@ -298,17 +327,27 @@ def build_page(cloud_page, cloud_pid, cloud, sh_project, workspace, member_map,
     )
 
 
+def _normalize_name(name):
+    return (name or "").strip().lower()
+
+
 def migrate_project_pages(cloud, ident, cloud_project, sh_project, member_map,
                            fallback_owner_id, execute, limit, now):
     workspace = sh_project.workspace
-    stats = {"create": 0, "skip": 0}
+    stats = {"create": 0, "skip_ext": 0, "skip_name": 0}
     warnings = []
 
-    already = set(
+    existing_by_ext = set(
         Page.objects.filter(project_pages__project=sh_project, external_source=EXTERNAL_SOURCE)
         .exclude(external_id__isnull=True)
         .values_list("external_id", flat=True)
     )
+    # Name-based recognition for the pre-existing 7/2 pages, which have no
+    # external_id at all (see REVISION 2026-07-11 in the module docstring).
+    existing_by_name = {
+        _normalize_name(n)
+        for n in Page.objects.filter(project_pages__project=sh_project).values_list("name", flat=True)
+    }
 
     new_pages = []
     new_links = []
@@ -317,8 +356,11 @@ def migrate_project_pages(cloud, ident, cloud_project, sh_project, member_map,
         if limit and count >= limit:
             break
         count += 1
-        if cloud_page["id"] in already:
-            stats["skip"] += 1
+        if cloud_page["id"] in existing_by_ext:
+            stats["skip_ext"] += 1
+            continue
+        if _normalize_name(cloud_page.get("name")) in existing_by_name:
+            stats["skip_name"] += 1
             continue
         if not execute:
             stats["create"] += 1
@@ -340,6 +382,7 @@ def migrate_project_pages(cloud, ident, cloud_project, sh_project, member_map,
             )
         )
         stats["create"] += 1
+        existing_by_name.add(_normalize_name(cloud_page.get("name")))  # guard within-run dup names
 
     if execute and new_pages:
         with transaction.atomic():
@@ -360,13 +403,17 @@ def migrate_orphan_pages(cloud, workspace, sh_projects_by_cloud_id, member_map,
     """Workspace-level cloud pages with no project link — the public API
     can't create these at all (no workspace-level page-create endpoint);
     the ORM can, via is_global=True and no ProjectPage row."""
-    stats = {"create": 0, "skip": 0}
+    stats = {"create": 0, "skip_ext": 0, "skip_name": 0}
     warnings = []
-    already = set(
+    existing_by_ext = set(
         Page.objects.filter(workspace=workspace, is_global=True, external_source=EXTERNAL_SOURCE)
         .exclude(external_id__isnull=True)
         .values_list("external_id", flat=True)
     )
+    existing_by_name = {
+        _normalize_name(n)
+        for n in Page.objects.filter(workspace=workspace, is_global=True).values_list("name", flat=True)
+    }
 
     new_pages = []
     count = 0
@@ -376,8 +423,11 @@ def migrate_orphan_pages(cloud, workspace, sh_projects_by_cloud_id, member_map,
         if limit and count >= limit:
             break
         count += 1
-        if cloud_page["id"] in already:
-            stats["skip"] += 1
+        if cloud_page["id"] in existing_by_ext:
+            stats["skip_ext"] += 1
+            continue
+        if _normalize_name(cloud_page.get("name")) in existing_by_name:
+            stats["skip_name"] += 1
             continue
         if not execute:
             stats["create"] += 1
@@ -391,6 +441,7 @@ def migrate_orphan_pages(cloud, workspace, sh_projects_by_cloud_id, member_map,
         # from the list payload only for these.
         new_pages.append(page)
         stats["create"] += 1
+        existing_by_name.add(_normalize_name(cloud_page.get("name")))  # guard within-run dup names
 
     if execute and new_pages:
         with transaction.atomic():
@@ -433,7 +484,7 @@ def main():
 
     sh_projects = selfhost_projects()
 
-    totals = {"create": 0, "skip": 0}
+    totals = {"create": 0, "skip_ext": 0, "skip_name": 0}
     for ident in sorted(cloud_projects):
         if only and ident not in only:
             continue
