@@ -158,12 +158,17 @@ def main():
         pid = cloud_projs[ident]["id"]
         sh_pid = sh_projs[ident]["id"]
         c.log(f"=== {ident} attachments ===")
+        by_ext, by_seqname = _build_sh_index(sh, sh_pid)
         count = 0
         for issue in cloud.get_paginated(f"projects/{pid}/issues/"):
             if args.limit and count >= args.limit:
                 break
             count += 1
-            sh_iid = _lookup_sh_issue(sh, sh_pid, issue["id"])
+            # drift issues -> external_id; 7/2-aligned issues have no
+            # external_id, so fall back to (sequence_id, name) equality.
+            sh_iid = by_ext.get(issue["id"]) or by_seqname.get(
+                (issue.get("sequence_id"), issue.get("name"))
+            )
             if not sh_iid:
                 continue  # issue not migrated yet; run 10 first
             migrate_issue_attachments(
@@ -175,14 +180,16 @@ def main():
         c.log("DRY-RUN only. Re-run with --execute to perform uploads.")
 
 
-def _lookup_sh_issue(sh, sh_pid, external_id):
-    status, data = sh.get_raw(
-        f"projects/{sh_pid}/issues/",
-        {"external_id": external_id, "external_source": EXTERNAL_SOURCE},
-    )
-    if status == 200 and isinstance(data, dict) and data.get("id"):
-        return data["id"]
-    return None
+def _build_sh_index(sh, sh_pid):
+    """Map cloud issue -> self-host issue id two ways: by external_id (drift
+    issues we imported) and by (sequence_id, name) (the 7/2-aligned issues,
+    which carry no external_id). Same matching the issue migration used."""
+    by_ext, by_seqname = {}, {}
+    for it in sh.get_paginated(f"projects/{sh_pid}/issues/"):
+        if it.get("external_id"):
+            by_ext[it["external_id"]] = it["id"]
+        by_seqname[(it.get("sequence_id"), it.get("name"))] = it["id"]
+    return by_ext, by_seqname
 
 
 if __name__ == "__main__":

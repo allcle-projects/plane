@@ -138,15 +138,26 @@ class PlaneClient:
             data = json.dumps(payload).encode("utf-8")
             headers["Content-Type"] = "application/json"
         req = urllib.request.Request(url, data=data, headers=headers, method=method)
-        try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                body = resp.read().decode("utf-8")
-                return resp.status, body
-        except urllib.error.HTTPError as exc:
-            body = exc.read().decode("utf-8", errors="replace")
-            return exc.code, body
-        except urllib.error.URLError as exc:
-            raise PlaneError(0, str(exc.reason), url)
+        # Cloud SaaS (api.plane.so) rate-limits (429); self-host does not.
+        # Throttle + exponential backoff only against the cloud host.
+        is_cloud = "api.plane.so" in url
+        for attempt in range(7):
+            if is_cloud:
+                time.sleep(0.6)
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                    return resp.status, resp.read().decode("utf-8")
+            except urllib.error.HTTPError as exc:
+                if exc.code == 429 or exc.code >= 500:
+                    retry_after = (exc.headers.get("Retry-After") if exc.headers else None) or ""
+                    time.sleep(float(retry_after) if retry_after.isdigit() else min(60.0, 2 ** attempt))
+                    continue
+                return exc.code, exc.read().decode("utf-8", errors="replace")
+            except urllib.error.URLError as exc:
+                if attempt == 6:
+                    raise PlaneError(0, str(exc.reason), url)
+                time.sleep(min(60.0, 2 ** attempt))
+        raise PlaneError(0, "retry exhausted (rate limit/network)", url)
 
     def get_raw(self, path, params=None):
         """GET returning (status, parsed_json_or_text)."""
