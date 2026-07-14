@@ -2,12 +2,18 @@
 
 > 대상: `plane.motemote.co.kr` (CE v1.3.1 fork, branch `mote`).
 > 로드맵 전체는 [`00-MASTER-ROADMAP.md`](./00-MASTER-ROADMAP.md) 참조. 이 문서는 **어디까지 했고 무엇이 남았는지**의 정본.
-> 배포 상태: **백엔드 `v1.3.1-mote.40` + 프론트 `v1.3.1-mote.40` + space `v1.3.1-space.2`** (server3 `/srv/shared/stack/plane-server3/`, compose.override 태그). 마이그 head 0144.
+> 배포 상태: **백엔드 `v1.3.1-mote.41` + 프론트 `v1.3.1-mote.43` + space `v1.3.1-space.2`** (server3 `/srv/shared/stack/plane-server3/`, compose.override 태그, api/web 각 2replica). 마이그 head 0144.
 
-## 요약 (2026-07-09): 로드맵 핵심 유료기능 전량 자체구현 완료 🎉
+## 요약 (2026-07-14): 클라우드→셀프호스트 완전이관 + 봉인기능 오픈 + 워크스페이스 통합뷰 신규
 
-문서 **02(Wiki/Publishing)·03(Work Item Power)·04(Planning) 전량 완료** + 문서 **05(Teamspaces·Custom RBAC) 완료** + 문서 **06(Automations·Enhanced Search) 완료**. XL 4종(Custom Fields·Initiatives·Teamspaces·Custom RBAC) 모두 완결.
-남은 것(비핵심/후속): Guest 좌석비율(생략권고) · Customers/인테이크 라우팅 · Page Comments 인라인 앵커(XL) · GitHub 아웃바운드(Slack과 동형으로 확장 가능) · 네이티브 모바일앱(별도 레포 포크 필요, 웹은 반응형으로 사용가능). **Integrations(Slack)·Notion/Jira importer·Teamspaces P4·Custom RBAC 전 게이트 완료.**
+**클라우드 이관 완결**: 이슈 162건+페이지 89건 DB-write 이관(seq_id·description_binary 보존), freeze로 클라우드 드리프트 정지, 담당자/라벨 전 프로젝트 재조정 완료(assignees_missing=0), 월요일 이격 재검토(create=0=완전동기화).
+**기능 진입점 감사+봉인기능 오픈**: docs 08 전체 유료기능 재점검 결과 전량 배포·게이팅無 확인. 단 **Time Tracking·Custom Fields는 토글UI 자체가 없어 완전봉인**(백엔드 필드 `is_time_tracking_enabled`/`is_issue_type_enabled`는 존재하되 `project/base.py`의 `.values()` allowlist 누락으로 설정페이지가 READ 불가) — Settings>Features 토글 2종 신설(mote.41)+전 프로젝트 DB로 즉시 ON. **Active Cycles**는 헤더에 "Pro feature" 업그레이드 배지 잔존(이미 언스텁된 무료기능인데 배지만 안 지워짐) — 제거(mote.43).
+**워크스페이스 통합뷰 신규(mote.42)**: Modules — 백엔드 `WorkspaceModulesEndpoint`+프론트 `fetchWorkspaceModules`가 스톡 CE에 이미 존재(Active Cycles와 동일한 "언스텁" 패턴)했으나 프론트 페이지가 없어서 신규 작성(`apps/web/app/.../modules/`+`apps/web/ce/components/workspace-modules/`), 사이드바 nav 추가. Work Items는 **신규개발 불필요** — `DEFAULT_GLOBAL_VIEWS_LIST`의 `all-issues`("모든 작업 항목")가 이미 사이드바 "보기" 클릭 시 노출.
+**무중단 배포 인프라**: `docker-compose.yml`에 이미 있던 `deploy.replicas` 활용, `API_REPLICAS=2`/`WEB_REPLICAS=2` 상시적용. mote.41~43 3회 배포 실측 다운타임 0.
+**워크스페이스/프로젝트 타임존**: 전체 Asia/Seoul 통일.
+
+이전 요약(2026-07-09): 문서 **02(Wiki/Publishing)·03(Work Item Power)·04(Planning) 전량 완료** + 문서 **05(Teamspaces·Custom RBAC) 완료** + 문서 **06(Automations·Enhanced Search) 완료**. XL 4종(Custom Fields·Initiatives·Teamspaces·Custom RBAC) 모두 완결.
+남은 것(비핵심/후속): Guest 좌석비율(생략권고) · Customers/인테이크 라우팅 · Page Comments 인라인 앵커(XL) · GitHub 아웃바운드(Slack과 동형으로 확장 가능) · 네이티브 모바일앱(별도 레포 포크 필요, 웹은 반응형으로 사용가능) · **워크스페이스 레벨 Modules 통합 집계뷰(2026-07-14 완료, 위 참조)**.
 
 ## ✅ 완료 (배포·검증)
 
