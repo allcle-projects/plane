@@ -389,6 +389,8 @@ export default {
   pages_description: "자유 형식의 콘텐츠를 작성하고 편집하세요. 메모, 문서, 무엇이든 가능합니다.",
   intake_description: "비회원이 버그, 피드백, 제안을 공유할 수 있도록 하되, 워크플로우를 방해하지 않도록 합니다.",
   time_tracking_description: "작업 항목 및 프로젝트에 소요된 시간을 기록하세요.",
+  custom_fields: "커스텀 필드",
+  custom_fields_description: "이 프로젝트에서 사용할 커스텀 작업 항목 유형과 속성을 정의하세요.",
   work_management_description: "작업 및 프로젝트를 쉽게 관리합니다.",
   documentation: "문서",
   contact_sales: "영업 문의",

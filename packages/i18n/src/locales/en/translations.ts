@@ -227,6 +227,8 @@ export default {
   pages_description: "Create and edit free-form content; notes, docs, anything.",
   intake_description: "Let non-members share bugs, feedback, and suggestions; without disrupting your workflow.",
   time_tracking_description: "Log time spent on work items and projects.",
+  custom_fields: "Custom Fields",
+  custom_fields_description: "Define custom work item types and properties for this project.",
   work_management_description: "Manage your work and projects with ease.",
   documentation: "Documentation",
   contact_sales: "Contact sales",

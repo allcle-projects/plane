@@ -8,7 +8,7 @@ import React, { useMemo } from "react";
 import { observer } from "mobx-react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
-import { Ellipsis, Target, Users } from "lucide-react";
+import { Boxes, Ellipsis, Gauge, Target, Users } from "lucide-react";
 import { Disclosure, Transition } from "@headlessui/react";
 // plane imports
 import {
@@ -39,6 +39,8 @@ export const SidebarMenuItems = observer(function SidebarMenuItems() {
   const slug = workspaceSlug?.toString() ?? "";
   const initiativesHref = `/${slug}/initiatives`;
   const teamspacesHref = `/${slug}/teamspaces`;
+  const activeCyclesHref = `/${slug}/active-cycles`;
+  const modulesHref = `/${slug}/modules`;
   const { setValue: toggleWorkspaceMenu, storedValue: isWorkspaceMenuOpen } = useLocalStorage<boolean>(
     "is_workspace_menu_open",
     true
@@ -122,6 +124,24 @@ export const SidebarMenuItems = observer(function SidebarMenuItems() {
             <div className="flex items-center gap-1.5 py-[1px]">
               <Users className="size-4 flex-shrink-0" />
               <p className="text-13 leading-5 font-medium">Teamspaces</p>
+            </div>
+          </SidebarNavItem>
+        </Link>
+        {/* Active Cycles (mote - workspace-level cycles overview) */}
+        <Link href={activeCyclesHref}>
+          <SidebarNavItem isActive={pathname?.startsWith(activeCyclesHref)}>
+            <div className="flex items-center gap-1.5 py-[1px]">
+              <Gauge className="size-4 flex-shrink-0" />
+              <p className="text-13 leading-5 font-medium">Active Cycles</p>
+            </div>
+          </SidebarNavItem>
+        </Link>
+        {/* Modules (mote - workspace-level modules overview) */}
+        <Link href={modulesHref}>
+          <SidebarNavItem isActive={pathname?.startsWith(modulesHref)}>
+            <div className="flex items-center gap-1.5 py-[1px]">
+              <Boxes className="size-4 flex-shrink-0" />
+              <p className="text-13 leading-5 font-medium">Modules</p>
             </div>
           </SidebarNavItem>
         </Link>

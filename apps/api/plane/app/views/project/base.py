@@ -185,6 +185,8 @@ class ProjectViewSet(BaseViewSet):
             "state",
             "inbox_view",
             "guest_view_all_features",
+            "is_time_tracking_enabled",
+            "is_issue_type_enabled",
             "project_lead",
             "network",
             "created_at",

@@ -7,12 +7,12 @@
 import { observer } from "mobx-react";
 import { useTranslation } from "@plane/i18n";
 // ui
-import { CycleIcon } from "@plane/propel/icons";
+import { ModuleIcon } from "@plane/propel/icons";
 import { Breadcrumbs, Header } from "@plane/ui";
 // components
 import { BreadcrumbLink } from "@/components/common/breadcrumb-link";
 
-export const WorkspaceActiveCycleHeader = observer(function WorkspaceActiveCycleHeader() {
+export const WorkspaceModulesHeader = observer(function WorkspaceModulesHeader() {
   const { t } = useTranslation();
   return (
     <Header>
@@ -21,8 +21,8 @@ export const WorkspaceActiveCycleHeader = observer(function WorkspaceActiveCycle
           <Breadcrumbs.Item
             component={
               <BreadcrumbLink
-                label={t("active_cycles")}
-                icon={<CycleIcon className="h-4 w-4 rotate-180 text-tertiary" />}
+                label={t("modules")}
+                icon={<ModuleIcon width={16} height={16} className="text-tertiary" />}
               />
             }
           />
