@@ -2,10 +2,7 @@
 
 > 작성 2026-07-04. 대상: `plane.motemote.co.kr` (CE v1.3.1 fork, branch `mote`).
 > 상세 설계는 `01`~`06` 문서 참조. 이 문서는 전체 순서·공수·의존성을 관통 정리한다.
->
-> **📊 구현 상태(2026-07-08): [`08-implementation-status.md`](./08-implementation-status.md) 참조.**
-> 24개 중 ~절반 완료 — 문서 03(Work Item Power) 전량 완결, 02·05 부분, 04·06 거의 미착수.
-> 배포 = 백엔드 `v1.3.1-mote.18` + 프론트 `v1.3.1-mote.15`.
+> 병행 트랙: [`12-growth-board-features.md`](./12-growth-board-features.md) — 그로스 보드(Notion/Miro/Figma 통합, AI 판독성 우선). 이 문서(24개 이슈트래커 기능)와 직교.
 
 ## 핵심 결론 (먼저 읽기)
 
