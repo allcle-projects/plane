@@ -25,6 +25,8 @@ export interface IWorkspaceView {
   rich_filters: TWorkItemFilterExpression;
   display_filters: IIssueDisplayFilterOptions;
   display_properties: IIssueDisplayProperties;
+  // Table/DB view (mote) — persisted spreadsheet column order. See docs/mote-design/12.
+  column_order?: string[];
   query: any;
   query_data: IWorkspaceViewProps;
   project: string;

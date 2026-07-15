@@ -14,6 +14,7 @@ import { EIssuesStoreType, EIssueLayoutTypes } from "@plane/types";
 import { AllIssueQuickActions } from "@/components/issues/issue-layouts/quick-action-dropdowns";
 import { SpreadsheetLayoutLoader } from "@/components/ui/loader/layouts/spreadsheet-layout-loader";
 // hooks
+import { useGlobalView } from "@/hooks/store/use-global-view";
 import { useIssues } from "@/hooks/store/use-issues";
 import { useUserPermissions } from "@/hooks/store/user";
 import { useIssuesActions } from "@/hooks/use-issues-actions";
@@ -38,7 +39,7 @@ type Props = {
 };
 
 export const WorkspaceSpreadsheetRoot = observer(function WorkspaceSpreadsheetRoot(props: Props) {
-  const { isLoading = false, workspaceSlug, globalViewId, fetchNextPages, issuesLoading } = props;
+  const { isLoading = false, workspaceSlug, globalViewId, fetchNextPages, issuesLoading, isDefaultView } = props;
 
   // Custom hooks
   useWorkspaceIssueProperties(workspaceSlug);
@@ -50,6 +51,26 @@ export const WorkspaceSpreadsheetRoot = observer(function WorkspaceSpreadsheetRo
   } = useIssues(EIssuesStoreType.GLOBAL);
   const { updateIssue, removeIssue, archiveIssue } = useIssuesActions(EIssuesStoreType.GLOBAL);
   const { allowPermissions } = useUserPermissions();
+  // Table/DB view (mote) — persisted spreadsheet column order for saved
+  // workspace views. Stock views (isDefaultView, e.g. "All Issues") have no
+  // backing IssueView row, so reordering is disabled for those. See docs/mote-design/12.
+  const { getViewDetailsById, updateGlobalView } = useGlobalView();
+  const columnOrder =
+    !isDefaultView && globalViewId ? getViewDetailsById(globalViewId.toString())?.column_order : undefined;
+
+  const handleMoveColumn = useCallback(
+    (currentOrder: string[], property: string, direction: "left" | "right") => {
+      if (isDefaultView || !globalViewId || !workspaceSlug) return;
+      const index = currentOrder.indexOf(property);
+      if (index === -1) return;
+      const swapWith = direction === "left" ? index - 1 : index + 1;
+      if (swapWith < 0 || swapWith >= currentOrder.length) return;
+      const reordered = [...currentOrder];
+      [reordered[index], reordered[swapWith]] = [reordered[swapWith], reordered[index]];
+      updateGlobalView(workspaceSlug.toString(), globalViewId.toString(), { column_order: reordered }, false);
+    },
+    [isDefaultView, globalViewId, workspaceSlug, updateGlobalView]
+  );
 
   // Derived values
   const issueFilters = globalViewId ? filters?.[globalViewId.toString()] : undefined;
@@ -125,6 +146,8 @@ export const WorkspaceSpreadsheetRoot = observer(function WorkspaceSpreadsheetRo
         canLoadMoreIssues={!!nextPageResults}
         loadMoreIssues={fetchNextPages}
         isWorkspaceLevel
+        columnOrder={columnOrder}
+        onMoveColumn={handleMoveColumn}
       />
     </IssueLayoutHOC>
   );
