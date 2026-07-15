@@ -70,6 +70,11 @@ export const coreRoutes: RouteConfigEntry[] = [
           route(":workspaceSlug/active-cycles", "./(all)/[workspaceSlug]/(projects)/active-cycles/page.tsx"),
         ]),
 
+        // Modules (workspace-level aggregate view)
+        layout("./(all)/[workspaceSlug]/(projects)/modules/layout.tsx", [
+          route(":workspaceSlug/modules", "./(all)/[workspaceSlug]/(projects)/modules/page.tsx"),
+        ]),
+
         // Analytics
         layout("./(all)/[workspaceSlug]/(projects)/analytics/[tabId]/layout.tsx", [
           route(":workspaceSlug/analytics/:tabId", "./(all)/[workspaceSlug]/(projects)/analytics/[tabId]/page.tsx"),
