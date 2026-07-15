@@ -86,8 +86,11 @@ export const SpreadsheetView = observer(function SpreadsheetView(props: Props) {
   // falling back to the default SPREADSHEET_PROPERTY_LIST order. Any column not
   // present in column_order (e.g. newly-added properties) is appended at the end,
   // so older saved orders never silently hide new columns.
+  // Array.isArray guard (not just truthiness/length): column_order is an
+  // unvalidated JSONField (same as the pre-existing display_properties), so a
+  // malformed value (e.g. a string) must not reach .filter()/.includes() below.
   const spreadsheetColumnsList =
-    columnOrder && columnOrder.length > 0
+    Array.isArray(columnOrder) && columnOrder.length > 0
       ? [
           ...(columnOrder.filter((property) =>
             availableColumns.includes(property as (typeof availableColumns)[number])
