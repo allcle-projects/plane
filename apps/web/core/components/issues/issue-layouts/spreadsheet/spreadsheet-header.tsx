@@ -28,6 +28,8 @@ interface Props {
   spreadsheetColumnsList: (keyof IIssueDisplayProperties)[];
   selectionHelpers: TSelectionHelper;
   isEpic?: boolean;
+  // Table/DB view (mote). See docs/mote-design/12.
+  onMoveColumn?: (currentOrder: string[], property: string, direction: "left" | "right") => void;
 }
 
 export const SpreadsheetHeader = observer(function SpreadsheetHeader(props: Props) {
@@ -40,6 +42,7 @@ export const SpreadsheetHeader = observer(function SpreadsheetHeader(props: Prop
     spreadsheetColumnsList,
     selectionHelpers,
     isEpic = false,
+    onMoveColumn,
   } = props;
   // router
   const { projectId } = useParams();
@@ -78,7 +81,7 @@ export const SpreadsheetHeader = observer(function SpreadsheetHeader(props: Prop
           </div>
         </th>
 
-        {spreadsheetColumnsList.map((property) => (
+        {spreadsheetColumnsList.map((property, index) => (
           <SpreadsheetHeaderColumn
             key={property}
             property={property}
@@ -87,6 +90,16 @@ export const SpreadsheetHeader = observer(function SpreadsheetHeader(props: Prop
             handleDisplayFilterUpdate={handleDisplayFilterUpdate}
             isEstimateEnabled={isEstimateEnabled}
             isEpic={isEpic}
+            onMoveLeft={
+              onMoveColumn && index > 0
+                ? () => onMoveColumn(spreadsheetColumnsList as string[], property, "left")
+                : undefined
+            }
+            onMoveRight={
+              onMoveColumn && index < spreadsheetColumnsList.length - 1
+                ? () => onMoveColumn(spreadsheetColumnsList as string[], property, "right")
+                : undefined
+            }
           />
         ))}
         {/* Custom Fields Phase 3: custom-property columns (toggled via display_properties.custom_properties) */}

@@ -30,6 +30,9 @@ export interface IProjectView {
   rich_filters: TWorkItemFilterExpression;
   display_filters: IIssueDisplayFilterOptions;
   display_properties: IIssueDisplayProperties;
+  // Table/DB view (mote) — persisted spreadsheet column order, independent of
+  // display_properties. Optional/absent for existing views (fallback to default order).
+  column_order?: string[];
   query: IIssueFilterOptions;
   query_data: IIssueFilterOptions;
   project: string;

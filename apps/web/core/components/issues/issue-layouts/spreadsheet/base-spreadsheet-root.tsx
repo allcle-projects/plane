@@ -14,6 +14,7 @@ import type { EIssuesStoreType, IIssueDisplayFilterOptions } from "@plane/types"
 import { EIssueLayoutTypes } from "@plane/types";
 // hooks
 import { useIssues } from "@/hooks/store/use-issues";
+import { useProjectView } from "@/hooks/store/use-project-view";
 import { useUserPermissions } from "@/hooks/store/user";
 import { useIssueStoreType } from "@/hooks/use-issue-layout-store";
 import { useIssuesActions } from "@/hooks/use-issues-actions";
@@ -42,11 +43,29 @@ interface IBaseSpreadsheetRoot {
 export const BaseSpreadsheetRoot = observer(function BaseSpreadsheetRoot(props: IBaseSpreadsheetRoot) {
   const { QuickActions, canEditPropertiesBasedOnProject, isCompletedCycle = false, viewId, isEpic = false } = props;
   // router
-  const { projectId } = useParams();
+  const { workspaceSlug, projectId } = useParams();
   // store hooks
   const storeType = useIssueStoreType() as SpreadsheetStoreType;
   const { allowPermissions } = useUserPermissions();
   const { issues, issuesFilter } = useIssues(storeType);
+  // Table/DB view (mote) — persisted spreadsheet column order, independent of
+  // display_properties. See docs/mote-design/12.
+  const { getViewById, updateView } = useProjectView();
+  const columnOrder = viewId ? getViewById(viewId)?.column_order : undefined;
+
+  const handleMoveColumn = useCallback(
+    (currentOrder: string[], property: string, direction: "left" | "right") => {
+      if (!viewId || !workspaceSlug || !projectId) return;
+      const index = currentOrder.indexOf(property);
+      if (index === -1) return;
+      const swapWith = direction === "left" ? index - 1 : index + 1;
+      if (swapWith < 0 || swapWith >= currentOrder.length) return;
+      const reordered = [...currentOrder];
+      [reordered[index], reordered[swapWith]] = [reordered[swapWith], reordered[index]];
+      updateView(workspaceSlug.toString(), projectId.toString(), viewId, { column_order: reordered });
+    },
+    [viewId, workspaceSlug, projectId, updateView]
+  );
   const {
     fetchIssues,
     fetchNextIssues,
@@ -129,6 +148,8 @@ export const BaseSpreadsheetRoot = observer(function BaseSpreadsheetRoot(props: 
         canLoadMoreIssues={!!nextPageResults}
         loadMoreIssues={fetchNextIssues}
         isEpic={isEpic}
+        columnOrder={columnOrder}
+        onMoveColumn={handleMoveColumn}
       />
     </IssueLayoutHOC>
   );

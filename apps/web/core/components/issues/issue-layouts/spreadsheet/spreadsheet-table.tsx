@@ -38,6 +38,8 @@ type Props = {
   spreadsheetColumnsList: (keyof IIssueDisplayProperties)[];
   selectionHelpers: TSelectionHelper;
   isEpic?: boolean;
+  // Table/DB view (mote). See docs/mote-design/12.
+  onMoveColumn?: (currentOrder: string[], property: string, direction: "left" | "right") => void;
 };
 
 export const SpreadsheetTable = observer(function SpreadsheetTable(props: Props) {
@@ -57,6 +59,7 @@ export const SpreadsheetTable = observer(function SpreadsheetTable(props: Props)
     spreadsheetColumnsList,
     selectionHelpers,
     isEpic = false,
+    onMoveColumn,
   } = props;
 
   // states
@@ -121,6 +124,7 @@ export const SpreadsheetTable = observer(function SpreadsheetTable(props: Props)
         spreadsheetColumnsList={spreadsheetColumnsList}
         selectionHelpers={selectionHelpers}
         isEpic={isEpic}
+        onMoveColumn={onMoveColumn}
       />
       <tbody>
         {issueIds.map((id) => (

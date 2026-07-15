@@ -79,6 +79,10 @@ class IssueView(WorkspaceBaseModel):
         blank=True,
         related_name="views",
     )
+    # Table/DB view (mote) — persisted spreadsheet column order, independent of
+    # display_properties (visibility). Null/empty for existing views; frontend
+    # falls back to SPREADSHEET_PROPERTY_LIST default order. See docs/mote-design/12.
+    column_order = models.JSONField(default=list, blank=True)
 
     class Meta:
         verbose_name = "Issue View"

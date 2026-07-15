@@ -40,6 +40,9 @@ type Props = {
   disableIssueCreation?: boolean;
   isWorkspaceLevel?: boolean;
   isEpic?: boolean;
+  // Table/DB view (mote) — persisted spreadsheet column order. See docs/mote-design/12.
+  columnOrder?: string[];
+  onMoveColumn?: (currentOrder: string[], property: string, direction: "left" | "right") => void;
 };
 
 export const SpreadsheetView = observer(function SpreadsheetView(props: Props) {
@@ -58,6 +61,8 @@ export const SpreadsheetView = observer(function SpreadsheetView(props: Props) {
     loadMoreIssues,
     isWorkspaceLevel = false,
     isEpic = false,
+    columnOrder,
+    onMoveColumn,
   } = props;
   // refs
   const containerRef = useRef<HTMLTableElement | null>(null);
@@ -69,13 +74,27 @@ export const SpreadsheetView = observer(function SpreadsheetView(props: Props) {
 
   const isEstimateEnabled: boolean = currentProjectDetails?.estimate !== null;
 
-  const spreadsheetColumnsList = isWorkspaceLevel
+  const availableColumns = isWorkspaceLevel
     ? SPREADSHEET_PROPERTY_LIST
     : SPREADSHEET_PROPERTY_LIST.filter((property) => {
         if (property === "cycle" && !currentProjectDetails?.cycle_view) return false;
         if (property === "modules" && !currentProjectDetails?.module_view) return false;
         return true;
       });
+
+  // Table/DB view (mote) — reorder columns per the saved view's column_order,
+  // falling back to the default SPREADSHEET_PROPERTY_LIST order. Any column not
+  // present in column_order (e.g. newly-added properties) is appended at the end,
+  // so older saved orders never silently hide new columns.
+  const spreadsheetColumnsList =
+    columnOrder && columnOrder.length > 0
+      ? [
+          ...(columnOrder.filter((property) =>
+            availableColumns.includes(property as (typeof availableColumns)[number])
+          ) as typeof availableColumns),
+          ...availableColumns.filter((property) => !columnOrder.includes(property)),
+        ]
+      : availableColumns;
 
   if (!issueIds || issueIds.length === 0) return <></>;
   return (
@@ -107,6 +126,7 @@ export const SpreadsheetView = observer(function SpreadsheetView(props: Props) {
                 spreadsheetColumnsList={spreadsheetColumnsList}
                 selectionHelpers={helpers}
                 isEpic={isEpic}
+                onMoveColumn={onMoveColumn}
               />
             </div>
             <div className="border-t border-subtle">
