@@ -489,6 +489,7 @@ class IssueListCreateAPIEndpoint(BaseAPIView):
                 project_id=str(project_id),
                 current_instance=None,
                 epoch=int(timezone.now().timestamp()),
+                notification=True,
             )
 
             # Send the model activity
@@ -648,6 +649,7 @@ class IssueDetailAPIEndpoint(BaseAPIView):
                         project_id=str(project_id),
                         current_instance=current_instance,
                         epoch=int(timezone.now().timestamp()),
+                        notification=True,
                     )
                     # Send the model activity for webhook dispatch
                     model_activity.delay(
@@ -706,6 +708,7 @@ class IssueDetailAPIEndpoint(BaseAPIView):
                         project_id=str(project_id),
                         current_instance=None,
                         epoch=int(timezone.now().timestamp()),
+                        notification=True,
                     )
                     # Send the model activity for webhook dispatch
                     model_activity.delay(
@@ -791,6 +794,7 @@ class IssueDetailAPIEndpoint(BaseAPIView):
                 project_id=str(project_id),
                 current_instance=current_instance,
                 epoch=int(timezone.now().timestamp()),
+                notification=True,
             )
             # Send the model activity for webhook dispatch
             model_activity.delay(
@@ -848,6 +852,7 @@ class IssueDetailAPIEndpoint(BaseAPIView):
             project_id=str(project_id),
             current_instance=current_instance,
             epoch=int(timezone.now().timestamp()),
+            notification=True,
         )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -1265,6 +1270,7 @@ class IssueLinkListCreateAPIEndpoint(BaseAPIView):
                 actor_id=str(link.created_by_id),
                 current_instance=None,
                 epoch=int(timezone.now().timestamp()),
+                notification=True,
             )
             serializer = IssueLinkSerializer(link)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -1376,6 +1382,7 @@ class IssueLinkDetailAPIEndpoint(BaseAPIView):
                 project_id=str(project_id),
                 current_instance=current_instance,
                 epoch=int(timezone.now().timestamp()),
+                notification=True,
             )
             serializer = IssueLinkSerializer(issue_link)
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -1409,6 +1416,7 @@ class IssueLinkDetailAPIEndpoint(BaseAPIView):
             project_id=str(project_id),
             current_instance=current_instance,
             epoch=int(timezone.now().timestamp()),
+            notification=True,
         )
         issue_link.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -1546,12 +1554,22 @@ class IssueCommentListCreateAPIEndpoint(BaseAPIView):
 
             issue_activity.delay(
                 type="comment.activity.created",
-                requested_data=json.dumps(serializer.data, cls=DjangoJSONEncoder),
+                # mote: IssueCommentCreateSerializer.Meta.fields omits "id"
+                # (it's write-only-excluded), so serializer.data here has no
+                # id and create_comment_activity()'s
+                # requested_data.get("id") resolves to None — the resulting
+                # IssueActivity.issue_comment_id stays NULL, which silently
+                # breaks extract_comment_mentions()'s activity lookup and
+                # the mention notification never fires for API-created
+                # comments. Re-serialize the fetched issue_comment (has a
+                # real id) instead of the create-serializer's output.
+                requested_data=json.dumps(IssueCommentSerializer(issue_comment).data, cls=DjangoJSONEncoder),
                 actor_id=str(issue_comment.created_by_id),
                 issue_id=str(self.kwargs.get("issue_id")),
                 project_id=str(self.kwargs.get("project_id")),
                 current_instance=None,
                 epoch=int(timezone.now().timestamp()),
+                notification=True,
             )
 
             # Send the model activity
@@ -1692,6 +1710,7 @@ class IssueCommentDetailAPIEndpoint(BaseAPIView):
                 project_id=str(project_id),
                 current_instance=current_instance,
                 epoch=int(timezone.now().timestamp()),
+                notification=True,
             )
             # Send the model activity
             model_activity.delay(
@@ -1738,6 +1757,7 @@ class IssueCommentDetailAPIEndpoint(BaseAPIView):
             project_id=str(project_id),
             current_instance=current_instance,
             epoch=int(timezone.now().timestamp()),
+            notification=True,
         )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
