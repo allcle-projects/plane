@@ -10,7 +10,7 @@
 
 **Phase 2**(테이블/DB뷰, M): 배포·검증 완료 — 백엔드 `v1.3.1-mote.43` + 프론트 `v1.3.1-mote.46`. `IssueView.column_order`(신규 JSONField, 마이그레이션 0145) + 헤더 컬럼 좌우 이동 버튼. `display_properties`(가시성)는 전혀 안 건드린 완전 additive 설계 — 52개 파일이 참조하는 기존 스키마 변경 리스크를 피함. e2e 검증(실인증경로): 뷰 생성→PATCH column_order→재조회 라운드트립 확인, display_properties 무회귀 확인. 커밋 `ef3d154`.
 
-**남은 것**(P3, 착수 안 함): CSV export가 뷰별 필터/컬럼 인식형이 아님(현재는 전체 프로젝트+전체 필드만) — "현재 뷰 그대로 내보내기"는 4~6시간 별도 작업으로 후순위.
+**Phase 2 P3 완료(2026-07-16)**: CSV export가 뷰별 필터/컬럼 인식형으로 확장 완료. 스프레드시트 레이아웃 뷰(프로젝트뷰+워크스페이스뷰 둘 다)에 Export 버튼 신설 — `view_id`를 넘기면 백엔드가 해당 뷰의 `query`(저장된 필터)로 이슈를 스코핑하고 `column_order`로 컬럼을 서브셋한다. `DynamicBaseSerializer`의 `fields` kwarg가 `expand`로 덮어써져 죽은 코드임을 발견해, serializer 레벨이 아니라 `DataExporter.serialize()` 이후 dict 후처리(`_apply_column_order`)로 우회 구현. 배포: 백엔드 `v1.3.1-mote.44` + 프론트 `v1.3.1-mote.49`. 실제 운영 뷰(MOTEERP 프로젝트, `column_order=['priority','assignee','due_date']`)로 `issue_export_task`를 직접 실행해 e2e 검증 — CSV 헤더가 정확히 `Project Name, Project Identifier, Identifier, Name, Priority, Assignees, Target Date`(always-included 4개 + 요청한 3개 컬럼만)로 나오고, 뷰의 프로젝트 스코프 필터가 정확히 적용됨을 확인. 커밋 `9e12bc8`.
 
 **의도적 제외**: 워크스페이스 레벨(전역) 뷰의 컬럼 순서 — `globalViewId`는 `IssueView` DB 모델과 다른 개념이라 이번 범위에서 제외. 드래그앤드롭 UI 대신 좌우 버튼으로 MVP 완성(적은 코드로 같은 가치).
 
@@ -56,7 +56,7 @@ Figma UX 리서치 낙서장 관행을 Plane 이슈 워크플로우로 전환:
 
 - P1: `IssueView`에 `display_mode='table'` 추가, 기존 spreadsheet 레이아웃 컴포넌트 재사용
 - P2: 컬럼 숨김/순서/정렬 저장(`display_properties` 확장)
-- P3: CSV 내보내기(기존 importer 로직 역방향)
+- P3: CSV 내보내기(기존 importer 로직 역방향) — ✅ 완료(2026-07-16), 위 요약 참고
 - MVP 제외: 인라인 셀 편집, 커스텀 집계 함수
 
 ## Phase 3 — 구조화 캔버스 (L, 2~3주)
