@@ -4,9 +4,10 @@
  * See the LICENSE file for details.
  */
 
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
+import { Download } from "lucide-react";
 
 // plane imports
 import {
@@ -18,6 +19,7 @@ import {
 } from "@plane/constants";
 import { Button } from "@plane/propel/button";
 import { LockIcon, ViewsIcon } from "@plane/propel/icons";
+import { setToast, TOAST_TYPE } from "@plane/propel/toast";
 import { Tooltip } from "@plane/propel/tooltip";
 import type { ICustomSearchSelectOption, IIssueDisplayFilterOptions, IIssueDisplayProperties } from "@plane/types";
 import { EIssuesStoreType, EViewAccess, EIssueLayoutTypes } from "@plane/types";
@@ -37,6 +39,10 @@ import { useUserPermissions } from "@/hooks/store/user";
 import { useAppRouter } from "@/hooks/use-app-router";
 // plane web imports
 import { CommonProjectBreadcrumbs } from "@/plane-web/components/breadcrumbs/common";
+// services (mote — Table/DB view export, docs/mote-design/12 Phase 2)
+import { ProjectExportService } from "@/services/project/project-export.service";
+
+const projectExportService = new ProjectExportService();
 
 export const ProjectViewIssuesHeader = observer(function ProjectViewIssuesHeader() {
   // refs
@@ -98,6 +104,34 @@ export const ProjectViewIssuesHeader = observer(function ProjectViewIssuesHeader
     },
     [workspaceSlug, projectId, viewId, updateFilters]
   );
+
+  // Table/DB view (mote) — export this view's filters + column order to CSV.
+  // See docs/mote-design/12 Phase 2.
+  const [isExporting, setIsExporting] = useState(false);
+  const handleExportView = useCallback(async () => {
+    if (!workspaceSlug || !projectId || !viewId) return;
+    setIsExporting(true);
+    try {
+      await projectExportService.csvExport(workspaceSlug.toString(), {
+        provider: "csv",
+        project: [projectId.toString()],
+        view_id: viewId.toString(),
+      });
+      setToast({
+        type: TOAST_TYPE.SUCCESS,
+        title: "Export started",
+        message: "Once ready, you'll be able to download it from your notifications.",
+      });
+    } catch (error) {
+      setToast({
+        type: TOAST_TYPE.ERROR,
+        title: "Export failed",
+        message: (error as { error?: string })?.error ?? "Something went wrong.",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  }, [workspaceSlug, projectId, viewId]);
 
   const viewDetails = viewId ? getViewById(viewId.toString()) : null;
 
@@ -196,6 +230,19 @@ export const ProjectViewIssuesHeader = observer(function ProjectViewIssuesHeader
             </FiltersDropdown>
           )}
         </>
+        {activeLayout === EIssueLayoutTypes.SPREADSHEET && (
+          <Tooltip tooltipContent="Export this view to CSV">
+            <Button
+              variant="neutral-primary"
+              size="lg"
+              prependIcon={<Download className="size-3.5" />}
+              onClick={handleExportView}
+              disabled={isExporting}
+            >
+              <div className="hidden sm:block">{isExporting ? "Exporting..." : "Export"}</div>
+            </Button>
+          </Tooltip>
+        )}
         {canUserCreateIssue && (
           <Button
             variant="primary"

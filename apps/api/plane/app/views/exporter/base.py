@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from plane.app.permissions import allow_permission, ROLE
 from plane.app.serializers import ExporterHistorySerializer
 from plane.bgtasks.export_task import issue_export_task
-from plane.db.models import ExporterHistory, Project, Workspace
+from plane.db.models import ExporterHistory, IssueView, Project, Workspace
 
 # Module imports
 from .. import BaseAPIView
@@ -27,6 +27,19 @@ class ExportIssuesEndpoint(BaseAPIView):
         provider = request.data.get("provider", False)
         multiple = request.data.get("multiple", False)
         project_ids = request.data.get("project", [])
+        # Table/DB view (mote) — optional view_id exports the current view's
+        # saved filters + column order instead of all issues/all columns.
+        # See docs/mote-design/12 Phase 2.
+        view_id = request.data.get("view_id", None)
+        view_query = None
+        column_order = None
+        if view_id:
+            view = IssueView.objects.filter(id=view_id, workspace__slug=slug).first()
+            if view:
+                view_query = view.query or None
+                column_order = view.column_order or None
+                if not project_ids and view.project_id:
+                    project_ids = [str(view.project_id)]
 
         if provider in ["csv", "xlsx", "json"]:
             if not project_ids:
@@ -53,6 +66,8 @@ class ExportIssuesEndpoint(BaseAPIView):
                 token_id=exporter.token,
                 multiple=multiple,
                 slug=slug,
+                view_query=view_query,
+                column_order=column_order,
             )
             return Response(
                 {"message": "Once the export is ready you will be able to download it"},

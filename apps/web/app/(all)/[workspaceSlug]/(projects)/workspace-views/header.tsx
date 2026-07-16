@@ -7,6 +7,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
+import { Download } from "lucide-react";
 // plane imports
 import {
   EIssueFilterType,
@@ -17,6 +18,8 @@ import {
 import { useTranslation } from "@plane/i18n";
 import { Button } from "@plane/propel/button";
 import { ViewsIcon } from "@plane/propel/icons";
+import { setToast, TOAST_TYPE } from "@plane/propel/toast";
+import { Tooltip } from "@plane/propel/tooltip";
 import type { IIssueDisplayFilterOptions, IIssueDisplayProperties, ICustomSearchSelectOption } from "@plane/types";
 import { EIssuesStoreType, EIssueLayoutTypes } from "@plane/types";
 import { Breadcrumbs, Header, BreadcrumbNavigationSearchDropdown } from "@plane/ui";
@@ -33,6 +36,10 @@ import { useGlobalView } from "@/hooks/store/use-global-view";
 import { useIssues } from "@/hooks/store/use-issues";
 import { useAppRouter } from "@/hooks/use-app-router";
 import { GlobalViewLayoutSelection } from "@/plane-web/components/views/helper";
+// services (mote — Table/DB view export, docs/mote-design/12 Phase 2)
+import { ProjectExportService } from "@/services/project/project-export.service";
+
+const projectExportService = new ProjectExportService();
 
 export const GlobalIssuesHeader = observer(function GlobalIssuesHeader() {
   // states
@@ -92,6 +99,36 @@ export const GlobalIssuesHeader = observer(function GlobalIssuesHeader() {
   const isLocked = viewDetails?.is_locked;
 
   const isDefaultView = DEFAULT_GLOBAL_VIEWS_LIST.find((view) => view.key === globalViewId);
+
+  // Table/DB view (mote) — export this workspace view's filters + column
+  // order to CSV. Stock views (isDefaultView) have no backing IssueView row,
+  // so export is only offered for saved custom workspace views. See
+  // docs/mote-design/12 Phase 2.
+  const [isExporting, setIsExporting] = useState(false);
+  const handleExportView = useCallback(async () => {
+    if (!workspaceSlug || !globalViewId) return;
+    setIsExporting(true);
+    try {
+      await projectExportService.csvExport(workspaceSlug.toString(), {
+        provider: "csv",
+        project: [],
+        view_id: globalViewId,
+      });
+      setToast({
+        type: TOAST_TYPE.SUCCESS,
+        title: "Export started",
+        message: "Once ready, you'll be able to download it from your notifications.",
+      });
+    } catch (error) {
+      setToast({
+        type: TOAST_TYPE.ERROR,
+        title: "Export failed",
+        message: (error as { error?: string })?.error ?? "Something went wrong.",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  }, [workspaceSlug, globalViewId]);
 
   const defaultViewDetails = DEFAULT_GLOBAL_VIEWS_LIST.find((view) => view.key === globalViewId);
 
@@ -169,6 +206,19 @@ export const GlobalIssuesHeader = observer(function GlobalIssuesHeader() {
                 handleDisplayPropertiesUpdate={handleDisplayProperties}
               />
             </FiltersDropdown>
+          )}
+          {!isDefaultView && activeLayout === EIssueLayoutTypes.SPREADSHEET && (
+            <Tooltip tooltipContent="Export this view to CSV">
+              <Button
+                variant="neutral-primary"
+                size="lg"
+                prependIcon={<Download className="size-3.5" />}
+                onClick={handleExportView}
+                disabled={isExporting}
+              >
+                <div className="hidden sm:block">{isExporting ? "Exporting..." : "Export"}</div>
+              </Button>
+            </Tooltip>
           )}
           <Button
             variant="primary"

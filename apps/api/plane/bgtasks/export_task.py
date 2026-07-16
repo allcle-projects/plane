@@ -24,6 +24,56 @@ from plane.utils.exception_logger import log_exception
 from plane.utils.porters.exporter import DataExporter
 from plane.utils.porters.serializers.issue import IssueExportSerializer
 
+# Table/DB view (mote) — view-aware CSV export, docs/mote-design/12 Phase 2.
+# Maps frontend SPREADSHEET_PROPERTY_LIST keys (IssueView.column_order /
+# display_properties, see packages/constants/src/issue/common.ts) to the
+# corresponding IssueExportSerializer output field(s). A frontend key may map
+# to more than one export column (e.g. "assignee" -> both a name list and,
+# implicitly, nothing else — kept 1:1 here since the export serializer already
+# collapses to single human-readable fields).
+VIEW_COLUMN_TO_EXPORT_FIELD = {
+    "state": "state_name",
+    "priority": "priority",
+    "assignee": "assignees",
+    "labels": "labels",
+    "modules": "modules",
+    "cycle": "cycles",
+    "start_date": "start_date",
+    "due_date": "target_date",
+    "estimate": "estimate",
+    "created_on": "created_at",
+    "updated_on": "updated_at",
+    "link": "links",
+    "attachment_count": "attachment_count",
+    "sub_issue_count": "sub_issues_count",
+}
+
+# Columns always kept regardless of column_order — identifying/core fields
+# that would make the export useless if silently dropped.
+ALWAYS_INCLUDED_EXPORT_FIELDS = ["project_name", "project_identifier", "identifier", "name"]
+
+
+def _apply_column_order(rows: list, column_order: list | None) -> list:
+    """Reorder/subset serialized export rows per a view's column_order. Unknown
+    frontend keys are silently skipped (same tolerance as the frontend's own
+    fallback-to-default-order behavior) rather than raising, since column_order
+    is user data, not a trusted schema."""
+    if not column_order:
+        return rows
+
+    ordered_fields = list(ALWAYS_INCLUDED_EXPORT_FIELDS)
+    for key in column_order:
+        export_field = VIEW_COLUMN_TO_EXPORT_FIELD.get(key)
+        if export_field and export_field not in ordered_fields:
+            ordered_fields.append(export_field)
+
+    if len(ordered_fields) <= len(ALWAYS_INCLUDED_EXPORT_FIELDS):
+        # column_order had no recognizable columns -- export everything rather
+        # than an empty/near-empty file.
+        return rows
+
+    return [{field: row.get(field, "") for field in ordered_fields} for row in rows]
+
 
 def create_zip_file(files: List[tuple[str, str | bytes]]) -> io.BytesIO:
     """
@@ -132,6 +182,8 @@ def issue_export_task(
     token_id: str,
     multiple: bool,
     slug: str,
+    view_query: dict | None = None,
+    column_order: list | None = None,
 ):
     """
     Export issues from the workspace.
@@ -189,6 +241,12 @@ def issue_export_task(
             )
         )
 
+        # Table/DB view (mote) — apply the saved view's filters (already
+        # computed into Q-filter form as IssueView.query at save-time via
+        # issue_filters()). No-op when exporting without a view.
+        if view_query:
+            workspace_issues = workspace_issues.filter(**view_query)
+
         # Create exporter for the specified format
         try:
             exporter = DataExporter(IssueExportSerializer, format_type=provider)
@@ -206,13 +264,17 @@ def issue_export_task(
             for project_id in project_ids:
                 project_issues = workspace_issues.filter(project_id=project_id)
                 export_filename = f"{slug}-{project_id}"
-                filename, content = exporter.export(export_filename, project_issues)
-                files.append((filename, content))
+                rows = _apply_column_order(exporter.serialize(project_issues), column_order)
+                content_bytes = exporter.formatter.encode(rows)
+                filename = f"{export_filename}.{exporter.formatter.extension}"
+                files.append((filename, content_bytes))
         else:
             # Export all issues in a single file
             export_filename = f"{slug}-{workspace_id}"
-            filename, content = exporter.export(export_filename, workspace_issues)
-            files.append((filename, content))
+            rows = _apply_column_order(exporter.serialize(workspace_issues), column_order)
+            content_bytes = exporter.formatter.encode(rows)
+            filename = f"{export_filename}.{exporter.formatter.extension}"
+            files.append((filename, content_bytes))
 
         zip_buffer = create_zip_file(files)
         upload_to_s3(zip_buffer, workspace_id, token_id, slug)

@@ -21,6 +21,9 @@ export class ProjectExportService extends APIService {
       project: string[];
       multiple?: boolean;
       rich_filters?: TWorkItemFilterExpression;
+      // Table/DB view (mote) — export a saved view's filters + column order
+      // instead of everything. See docs/mote-design/12 Phase 2.
+      view_id?: string;
     }
   ): Promise<any> {
     return this.post(`/api/workspaces/${workspaceSlug}/export-issues/`, data)
