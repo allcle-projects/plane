@@ -61,6 +61,8 @@ Figma UX 리서치 낙서장 관행을 Plane 이슈 워크플로우로 전환:
 
 ## Phase 3 — 구조화 캔버스 (L, 2~3주)
 
+> 상세 구현 스펙(모델·API·마이그레이션·프론트 확장·MVP 경계): [`13-structured-canvas.md`](./13-structured-canvas.md) (2026-07-16 설계 완료, 착수 전 otro 확인 대기)
+
 - 데이터 모델: `Canvas`(workspace/project 스코프) + `CanvasCard`(x, y, width, height, **linked_issue_id 또는 title+body**, label)
 - **AI 판독성 원칙**: `CanvasCard`는 좌표 없이도 독립적으로 의미가 통해야 한다 — 즉 카드 자체가 이슈이거나(연결), 최소 제목+본문을 가진 완결 텍스트여야 한다. 좌표만 있고 텍스트가 없는 카드(예: 순수 이미지+화살표)는 금지
 - 프론트: 페이지 내 Tiptap 블록으로 임베드(`custom-canvas`, 오늘 만든 `custom-video` 패턴 재사용 — extension-config의 `group: "block", atom: true` 구조가 대형 인터랙티브 블록에도 적용 가능함을 이미 확인)
