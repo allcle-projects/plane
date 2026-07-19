@@ -4,6 +4,17 @@
 > 로드맵 전체는 [`00-MASTER-ROADMAP.md`](./00-MASTER-ROADMAP.md) 참조. 이 문서는 **어디까지 했고 무엇이 남았는지**의 정본.
 > 배포 상태: **백엔드 `v1.3.1-mote.47` + 프론트 `v1.3.1-mote.49` + space `v1.3.1-space.2`** (server3 `/srv/shared/stack/plane-server3/`, compose.override 태그, web/api/worker/beat-worker 전부 canary 배포 관리). 마이그 head 0144. 빌드완료·미배포 대기중: 백엔드 `mote.48`·프론트 `mote.50`(다음 무중단 배포 실측용).
 
+## 요약 (2026-07-16): 공개 API 멘션/알림 무반응 버그 — 근본원인 2개 발견·수정·배포·검증 완료
+
+otro 보고: "웹 UI에서 사람이 @태그하면 알림 뜨는데 API로 만든 코멘트는 태그해도 알림함에 안 들어간다." 조사 결과 멘션 태그 인코딩 문제가 아니라 **백엔드 코드 버그 2개**였음 (`apps/api/plane/api/views/issue.py`):
+1. 공개 v1 API의 `issue_activity.delay()` 호출 15곳 중 11곳(이슈/링크/코멘트 CRUD)이 `notification=True` kwarg를 아예 안 넘김 → `bgtasks/issue_activities_task.py`가 `notifications.delay()`(알림 파이프라인 전체)를 절대 호출 안 함. 웹앱(`app/views/`)의 동일 엔드포인트는 항상 넘김.
+2. 코멘트 생성 한정 두 번째 버그: `IssueCommentCreateSerializer.Meta.fields`가 `id`를 응답에서 누락(DRF `read_only_fields` 함정) → `create_comment_activity()`가 `IssueActivity.issue_comment_id` FK를 못 채움 → `notification_task.py`의 `extract_comment_mentions()`가 코멘트를 찾지 못해 멘션 매칭 자체가 실패.
+
+**수정**: `apps/api/plane/api/views/issue.py` 12줄(커밋 `8daa30b`) — 11곳 `notification=True` 추가 + 코멘트 생성 시 `IssueCommentSerializer(issue_comment).data`로 재직렬화(원래는 `id` 없는 create-serializer의 `.data`를 그대로 씀).
+**배포**: mote.44→47 백엔드 순차 재빌드, api×2·worker·beat-worker 4개 컨테이너 canary 무중단 전환.
+**검증(3중)**: (a) 정식 pytest 13개(`apps/api/plane/tests/contract/api/test_mention_notification_fix.py`, 커밋 `10543a6`) — unit(멘션 파싱)+contract(뷰 디스패치 kwarg mock 검증)+integration(전체 파이프라인, `.delay()`를 `side_effect`로 동기 실행시켜 브로커 없이 실제 코드 경로 검증). 픽스를 임시로 되돌려 정확히 4개만 실패(red)하는 것 확인 후 복원해 13/13 통과(green) 실증. (b) 운영 DB 직접 API 호출 e2e — 실제 코멘트 생성→`Notification` row 실제 생성 확인, `sender="in_app:issue_activities:mentioned"`. (c) otro 실사용 확인 — 웹 알림함 "모두" 탭에서 `@otro` 멘션 태그가 실제로 렌더링되는 것 스크린샷으로 최종 확인. 테스트 아티팩트(코멘트·알림) 전부 정리 완료.
+**함정**: 이 레포 pytest 설정엔 `CELERY_TASK_ALWAYS_EAGER`가 없어 `.delay()`가 브로커에 큐잉만 되고 테스트 프로세스 안에서 실행 안 됨 — mock+`side_effect`로 동기 실행시켜야 실제 코드 경로를 검증 가능(안 하면 가짜 실패 발생, 직접 겪음). 웹 알림함 UI는 "전체"/"멘션" 탭이 분리돼 있고 "멘션" 탭만 `?mentioned=true` 쿼리파라미터를 보냄(정상 설계, 버그 아님) — 처음 검증 때 "전체" 탭 기준으로만 확인해서 순간 혼동 있었음.
+
 ## 요약 (2026-07-16): 완전 무중단 배포 인프라(canary) 구축 + 실배포 검증
 
 **canary 배포 스크립트 5종** (`scripts/deploy/`, server3 `/srv/shared/stack/plane-server3/` 동일사본): `canary-swap-{web,api,worker}.sh`—신버전 컨테이너를 기존과 같은 네트워크 별칭으로 먼저 띄우고 준비확인 후 구컨테이너 순차제거(항상 최소 1개 서빙). `restart-beat-worker.sh`—Celery beat 스케줄러는 `django_celery_beat.DatabaseScheduler`에 분산락이 없어 2개 동시운영시 예약작업 중복발화 위험→**순차재시작 전용**(겹침 없음, 이미 2대 이상이면 스스로 거부). `safe-compose-up.sh`—canary로 뜬 컨테이너는 compose 라벨이 없어 일반 `docker compose up -d`가 인식 못하고 전체 재생성(다운타임 재발+beat-worker 중복위험)을 시도하는 걸 방지, `--no-deps`로 web/api/worker/beat-worker 4종 제외한 나머지 서비스만 건드림.
