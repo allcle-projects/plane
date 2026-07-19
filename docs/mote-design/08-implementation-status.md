@@ -2,7 +2,13 @@
 
 > 대상: `plane.motemote.co.kr` (CE v1.3.1 fork, branch `mote`).
 > 로드맵 전체는 [`00-MASTER-ROADMAP.md`](./00-MASTER-ROADMAP.md) 참조. 이 문서는 **어디까지 했고 무엇이 남았는지**의 정본.
-> 배포 상태: **백엔드 `v1.3.1-mote.41` + 프론트 `v1.3.1-mote.43` + space `v1.3.1-space.2`** (server3 `/srv/shared/stack/plane-server3/`, compose.override 태그, api/web 각 2replica). 마이그 head 0144.
+> 배포 상태: **백엔드 `v1.3.1-mote.47` + 프론트 `v1.3.1-mote.49` + space `v1.3.1-space.2`** (server3 `/srv/shared/stack/plane-server3/`, compose.override 태그, web/api/worker/beat-worker 전부 canary 배포 관리). 마이그 head 0144. 빌드완료·미배포 대기중: 백엔드 `mote.48`·프론트 `mote.50`(다음 무중단 배포 실측용).
+
+## 요약 (2026-07-16): 완전 무중단 배포 인프라(canary) 구축 + 실배포 검증
+
+**canary 배포 스크립트 5종** (`scripts/deploy/`, server3 `/srv/shared/stack/plane-server3/` 동일사본): `canary-swap-{web,api,worker}.sh`—신버전 컨테이너를 기존과 같은 네트워크 별칭으로 먼저 띄우고 준비확인 후 구컨테이너 순차제거(항상 최소 1개 서빙). `restart-beat-worker.sh`—Celery beat 스케줄러는 `django_celery_beat.DatabaseScheduler`에 분산락이 없어 2개 동시운영시 예약작업 중복발화 위험→**순차재시작 전용**(겹침 없음, 이미 2대 이상이면 스스로 거부). `safe-compose-up.sh`—canary로 뜬 컨테이너는 compose 라벨이 없어 일반 `docker compose up -d`가 인식 못하고 전체 재생성(다운타임 재발+beat-worker 중복위험)을 시도하는 걸 방지, `--no-deps`로 web/api/worker/beat-worker 4종 제외한 나머지 서비스만 건드림.
+**실측**: web(mote.45→49)·backend(mote.42→47) 실제 순방향 배포 400요청 연속모니터링=**502/503/연결실패 0건**. beat-worker 순차재시작 200회 모니터링=**동시인스턴스 최대1**(중복발화 위험0). 전체 PLANE-72 완료.
+**향후 규칙**: web/api/worker/beat-worker는 반드시 canary-swap-*.sh/restart-beat-worker.sh 전용, 그 외 서비스는 safe-compose-up.sh 전용 — 절대 맨 `docker compose up -d` 금지(compose.override.yml 드리프트+무인식 재생성 실사고 2건 예방 사례 있음).
 
 ## 요약 (2026-07-14): 클라우드→셀프호스트 완전이관 + 봉인기능 오픈 + 워크스페이스 통합뷰 신규
 
