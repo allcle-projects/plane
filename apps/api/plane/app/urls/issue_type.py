@@ -11,6 +11,7 @@ from plane.app.views import (
     IssueTypeViewSet,
     IssuePropertyViewSet,
     IssuePropertyOptionViewSet,
+    ProjectIssueTypeViewSet,
 )
 
 
@@ -53,5 +54,16 @@ urlpatterns = [
             {"get": "retrieve", "patch": "partial_update", "delete": "destroy"}
         ),
         name="issue-property-options",
+    ),
+    # Project ↔ work item type links (which types a project may use)
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/issue-types/",
+        ProjectIssueTypeViewSet.as_view({"get": "list", "post": "create"}),
+        name="project-issue-types",
+    ),
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/issue-types/<uuid:pk>/",
+        ProjectIssueTypeViewSet.as_view({"delete": "destroy"}),
+        name="project-issue-types",
     ),
 ]

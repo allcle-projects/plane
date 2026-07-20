@@ -13,7 +13,12 @@ import { orderBy, set, unset } from "lodash-es";
 import { action, computed, makeObservable, observable, runInAction } from "mobx";
 import { computedFn } from "mobx-utils";
 // types
-import type { TIssueProperty, TIssuePropertyOption, TIssueType } from "@/plane-web/types/issue-types";
+import type {
+  TIssueProperty,
+  TIssuePropertyOption,
+  TIssueType,
+  TProjectIssueType,
+} from "@/plane-web/types/issue-types";
 // plane web services
 import issueTypeService from "@/services/issue-type.service";
 // plane web store
@@ -85,6 +90,21 @@ export interface IWorkItemTypeStore {
     propertyId: string,
     optionId: string
   ) => Promise<void>;
+  // project link actions (which types a project may use)
+  fetchProjectIssueTypes: (
+    workspaceSlug: string,
+    projectId: string
+  ) => Promise<TProjectIssueType[] | undefined>;
+  linkProjectIssueType: (
+    workspaceSlug: string,
+    projectId: string,
+    workItemTypeId: string
+  ) => Promise<TProjectIssueType | undefined>;
+  unlinkProjectIssueType: (
+    workspaceSlug: string,
+    projectId: string,
+    projectIssueTypeId: string
+  ) => Promise<void>;
 }
 
 export class WorkItemTypeStore implements IWorkItemTypeStore {
@@ -116,6 +136,10 @@ export class WorkItemTypeStore implements IWorkItemTypeStore {
       createOption: action,
       updateOption: action,
       deleteOption: action,
+      // project link actions
+      fetchProjectIssueTypes: action,
+      linkProjectIssueType: action,
+      unlinkProjectIssueType: action,
     });
   }
 
@@ -391,6 +415,59 @@ export class WorkItemTypeStore implements IWorkItemTypeStore {
       runInAction(() => this.workItemTypes[workItemTypeId]?.propertyById(propertyId)?.removeOption(optionId));
     } catch (error) {
       this.error = { status: "error", message: "Error deleting option" };
+      throw error;
+    }
+  };
+
+  // ----------------------------------------------------- project link actions
+  // These rows are project-scoped, not workspace-scoped, so they are not held
+  // in the workItemTypes map; the modal owns the transient link state.
+  /**
+   * @description fetch the work item types enabled on a project
+   */
+  fetchProjectIssueTypes = async (
+    workspaceSlug: string,
+    projectId: string
+  ): Promise<TProjectIssueType[] | undefined> => {
+    try {
+      this.error = undefined;
+      return await issueTypeService.fetchProjectIssueTypes(workspaceSlug, projectId);
+    } catch (error) {
+      this.error = { status: "error", message: "Error fetching project work item types" };
+      throw error;
+    }
+  };
+
+  /**
+   * @description enable a work item type on a project
+   */
+  linkProjectIssueType = async (
+    workspaceSlug: string,
+    projectId: string,
+    workItemTypeId: string
+  ): Promise<TProjectIssueType | undefined> => {
+    try {
+      this.error = undefined;
+      return await issueTypeService.linkProjectIssueType(workspaceSlug, projectId, workItemTypeId);
+    } catch (error) {
+      this.error = { status: "error", message: "Error linking work item type to project" };
+      throw error;
+    }
+  };
+
+  /**
+   * @description disable a work item type on a project
+   */
+  unlinkProjectIssueType = async (
+    workspaceSlug: string,
+    projectId: string,
+    projectIssueTypeId: string
+  ): Promise<void> => {
+    try {
+      this.error = undefined;
+      await issueTypeService.unlinkProjectIssueType(workspaceSlug, projectId, projectIssueTypeId);
+    } catch (error) {
+      this.error = { status: "error", message: "Error unlinking work item type from project" };
       throw error;
     }
   };

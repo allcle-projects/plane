@@ -13,7 +13,12 @@
 
 // plane imports
 import { API_BASE_URL } from "@plane/constants";
-import type { TIssueType, TIssueProperty, TIssuePropertyOption } from "@/plane-web/types/issue-types";
+import type {
+  TIssueType,
+  TIssueProperty,
+  TIssuePropertyOption,
+  TProjectIssueType,
+} from "@/plane-web/types/issue-types";
 // services
 import { APIService } from "@/services/api.service";
 
@@ -177,6 +182,47 @@ export class IssueTypeService extends APIService {
       await this.delete(
         `/api/workspaces/${workspaceSlug}/issue-types/${issueTypeId}/properties/${propertyId}/options/${optionId}/`
       );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // ------------------------------------------------ project ↔ type links
+
+  async fetchProjectIssueTypes(
+    workspaceSlug: string,
+    projectId: string
+  ): Promise<TProjectIssueType[] | undefined> {
+    try {
+      const { data } = await this.get(`/api/workspaces/${workspaceSlug}/projects/${projectId}/issue-types/`);
+      return data || undefined;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async linkProjectIssueType(
+    workspaceSlug: string,
+    projectId: string,
+    issueTypeId: string
+  ): Promise<TProjectIssueType | undefined> {
+    try {
+      const { data } = await this.post(`/api/workspaces/${workspaceSlug}/projects/${projectId}/issue-types/`, {
+        issue_type_id: issueTypeId,
+      });
+      return data || undefined;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async unlinkProjectIssueType(
+    workspaceSlug: string,
+    projectId: string,
+    projectIssueTypeId: string
+  ): Promise<void> {
+    try {
+      await this.delete(`/api/workspaces/${workspaceSlug}/projects/${projectId}/issue-types/${projectIssueTypeId}/`);
     } catch (error) {
       throw error;
     }

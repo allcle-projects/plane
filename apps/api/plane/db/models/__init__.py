@@ -93,7 +93,7 @@ from .workspace import (
 
 from .favorite import UserFavorite
 
-from .issue_type import IssueType
+from .issue_type import IssueType, ProjectIssueType
 
 from .issue_property import (
     PropertyTypeEnum,

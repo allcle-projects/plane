@@ -182,6 +182,7 @@ from .issue_type import (
     IssueTypeViewSet,
     IssuePropertyViewSet,
     IssuePropertyOptionViewSet,
+    ProjectIssueTypeViewSet,
 )
 
 from .template import (
