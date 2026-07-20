@@ -5,6 +5,11 @@ CE v1.3.1 기반 `mote` 브랜치. 이미지 태그 `mote/plane-{backend,fronten
 
 > ⚠️ 배포 시 `--env-file plane.env` 필수 — 누락하면 인터폴레이션이 DB 비밀번호를 기본값으로 떨어뜨려 컨테이너가 인증 실패한다.
 
+## v1.3.1-mote.49 (2026-07-20) — API 활동 로그 감사추적 fix
+- **`logger_task` Celery 태스크 등록** (PR #1) — `APITokenLogMiddleware`가 큐잉하는 `plane.bgtasks.logger_task.process_logs`가 `CELERY_IMPORTS`에서 누락되어 worker가 전량 "unregistered task"로 거부, `api_activity_logs`가 처음부터 count=0으로 감사추적 완전 유실 상태였음. 한 줄 등록으로 해결.
+- 배포: server3 canary-swap으로 api×2/worker/beat-worker 무중단 전체 교체, 실측 검증(0건→7건 적재 확인) 완료.
+- ⚠️ 후속(미착수, PLANE-75): `api_activity_logs`에 `X-Api-Key` 원문·요청/응답 바디가 평문 저장됨. 일 1회 cleanup(`delete_api_logs`)으로 보존기간은 짧으나 마스킹/redact는 otro 판단 대기.
+
 ## v1.3.1-mote.6 (2026-07-05) — Phase 1 유료기능
 마이그레이션 0123~0126.
 - **Estimates 시간(TIME) 타입** (0123) — 시간 단위 견적, 숫자 롤업 포함
