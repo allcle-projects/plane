@@ -61,6 +61,9 @@ export const WorkItemTypeModal = observer(function WorkItemTypeModal(props: TWor
   // project id -> existing link row id, used to diff and to unlink on save.
   const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
   const [projectLinkMap, setProjectLinkMap] = useState<Record<string, string>>({});
+  // guards submit until the project-link seed fetch below resolves, so saving
+  // mid-fetch can't wipe out existing links the form hasn't loaded yet.
+  const [isLoadingProjectLinks, setIsLoadingProjectLinks] = useState(false);
   // form info
   const {
     control,
@@ -93,6 +96,7 @@ export const WorkItemTypeModal = observer(function WorkItemTypeModal(props: TWor
     setProjectLinkMap({});
     if (!isEditing || !workItemTypeId || !workspaceProjectIds) return;
     let cancelled = false;
+    setIsLoadingProjectLinks(true);
     (async () => {
       const results = await Promise.all(
         workspaceProjectIds.map(async (projectId) => {
@@ -112,6 +116,7 @@ export const WorkItemTypeModal = observer(function WorkItemTypeModal(props: TWor
       });
       setProjectLinkMap(map);
       setSelectedProjectIds(linkedProjectIds);
+      setIsLoadingProjectLinks(false);
     })();
     return () => {
       cancelled = true;
@@ -138,6 +143,7 @@ export const WorkItemTypeModal = observer(function WorkItemTypeModal(props: TWor
     reset(defaultValues);
     setSelectedProjectIds([]);
     setProjectLinkMap({});
+    setIsLoadingProjectLinks(false);
     handleClose();
   };
 
@@ -258,7 +264,13 @@ export const WorkItemTypeModal = observer(function WorkItemTypeModal(props: TWor
           <Button variant="secondary" size="sm" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button variant="primary" size="sm" type="submit" loading={isSubmitting}>
+          <Button
+            variant="primary"
+            size="sm"
+            type="submit"
+            loading={isSubmitting}
+            disabled={isLoadingProjectLinks}
+          >
             {isEditing ? "Update" : "Create"}
           </Button>
         </div>
