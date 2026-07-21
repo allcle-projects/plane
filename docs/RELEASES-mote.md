@@ -5,6 +5,12 @@ CE v1.3.1 기반 `mote` 브랜치. 이미지 태그 `mote/plane-{backend,fronten
 
 > ⚠️ 배포 시 `--env-file plane.env` 필수 — 누락하면 인터폴레이션이 DB 비밀번호를 기본값으로 떨어뜨려 컨테이너가 인증 실패한다.
 
+## v1.3.1-mote.50 (2026-07-21) — .md/.mdx 첨부파일 업로드 실패 fix
+- **원인**: `.md`/`.mdx`는 매직바이트가 없는 순수 텍스트라 프론트엔드 `file-type` 시그니처 감지가 빈 문자열을 반환 → 백엔드가 `not type` 체크로 400 "Invalid file type." 거부. 인프라(MinIO/S3) 문제 아님, API 직접 호출로 재현·검증 완료(TEST-32).
+- **수정**: upstream Plane `feat/file-uploads-md-mdx-support` 커밋 2개 cherry-pick(`dac358b2aa`, `9eb1148dde`) — 확장자 기반 MIME fallback(`EXTENSION_MIME_TYPE_MAP`) 추가, `text/mdx` allowlist 등록, 이중확장자(`foo.exe.md`) 우회 차단.
+- **배포**: server3 canary-swap으로 api×2/worker/beat-worker/web×2 전체 무중단 교체, 배포 이미지 내부에 fix 코드 포함 확인(백엔드 `common.py`, 프론트엔드 번들 grep) + API 재검증(`text/markdown` 첨부 200 확인) 완료.
+- ⚠️ server3 빌드소스(`/srv/shared/app-src/plane`)가 GROWTH-144 관련 uncommitted 변경(문서 정리·비디오 MIME 추가)을 갖고 있어 stash 대피 후 cherry-pick, stash pop으로 병합 복원(손실 없음). `mote.50` 태그가 07-16에 한 번 임시로 쓰인 이력과 우연히 겹쳐 이미지가 재생성됐다 — 태그 재사용 시 `docker inspect --format '{{.Created}}'`로 실제 재빌드 여부 확인 필수.
+
 ## v1.3.1-mote.49 (2026-07-20) — API 활동 로그 감사추적 fix
 - **`logger_task` Celery 태스크 등록** (PR #1) — `APITokenLogMiddleware`가 큐잉하는 `plane.bgtasks.logger_task.process_logs`가 `CELERY_IMPORTS`에서 누락되어 worker가 전량 "unregistered task"로 거부, `api_activity_logs`가 처음부터 count=0으로 감사추적 완전 유실 상태였음. 한 줄 등록으로 해결.
 - 배포: server3 canary-swap으로 api×2/worker/beat-worker 무중단 전체 교체, 실측 검증(0건→7건 적재 확인) 완료.
