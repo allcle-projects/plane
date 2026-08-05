@@ -20,12 +20,14 @@ from plane.app.serializers import (
     IssuePropertySerializer,
     IssuePropertyReadSerializer,
     IssuePropertyOptionSerializer,
+    ProjectIssueTypeSerializer,
 )
 from plane.db.models import (
     Workspace,
     IssueType,
     IssueProperty,
     IssuePropertyOption,
+    ProjectIssueType,
 )
 
 
@@ -180,4 +182,55 @@ class IssuePropertyOptionViewSet(BaseViewSet):
     def destroy(self, request, slug, type_id, property_id, pk):
         option = self.get_queryset().get(pk=pk)
         option.delete()  # soft-delete; soft-cascades to child options/values
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ProjectIssueTypeViewSet(BaseViewSet):
+    # Project-scoped: which work item types are enabled on this project.
+    # Rows live in project_issue_types; the type itself stays workspace-scoped.
+    serializer_class = ProjectIssueTypeSerializer
+    model = ProjectIssueType
+
+    def get_queryset(self):
+        return (
+            super()
+            .get_queryset()
+            .filter(workspace__slug=self.kwargs.get("slug"))
+            .filter(project_id=self.kwargs.get("project_id"))
+            .select_related("issue_type")
+        )
+
+    @allow_permission([ROLE.ADMIN, ROLE.MEMBER, ROLE.GUEST], level="PROJECT")
+    def list(self, request, slug, project_id):
+        project_issue_types = self.get_queryset()
+        serializer = ProjectIssueTypeSerializer(project_issue_types, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @allow_permission([ROLE.ADMIN], level="PROJECT")
+    def create(self, request, slug, project_id):
+        issue_type_id = request.data.get("issue_type_id")
+        if not issue_type_id:
+            return Response(
+                {"error": "issue_type_id is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # The type must exist within this project's workspace.
+        issue_type = IssueType.objects.get(workspace__slug=slug, pk=issue_type_id)
+        # Reject an already-live link (constraint only fires when deleted_at is null).
+        if self.get_queryset().filter(issue_type_id=issue_type.id).exists():
+            return Response(
+                {"error": "This work item type is already linked to the project."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        project_issue_type = ProjectIssueType.objects.create(
+            project_id=project_id,
+            issue_type_id=issue_type.id,
+        )
+        serializer = ProjectIssueTypeSerializer(project_issue_type)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @allow_permission([ROLE.ADMIN], level="PROJECT")
+    def destroy(self, request, slug, project_id, pk):
+        project_issue_type = self.get_queryset().get(pk=pk)
+        project_issue_type.delete()  # soft-delete (deleted_at); re-linkable later
         return Response(status=status.HTTP_204_NO_CONTENT)

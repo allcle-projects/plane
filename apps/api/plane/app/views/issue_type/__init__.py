@@ -6,4 +6,5 @@ from .base import (
     IssueTypeViewSet,
     IssuePropertyViewSet,
     IssuePropertyOptionViewSet,
+    ProjectIssueTypeViewSet,
 )

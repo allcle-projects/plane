@@ -334,11 +334,14 @@ class WorkspaceFileAssetEndpoint(BaseAPIView):
             "image/webp",
             "image/jpg",
             "image/gif",
+            "video/mp4",
+            "video/webm",
+            "video/quicktime",
         ]
         if type not in allowed_types:
             return Response(
                 {
-                    "error": "Invalid file type. Only JPEG, PNG, WebP, JPG and GIF files are allowed.",
+                    "error": "Invalid file type. Only JPEG, PNG, WebP, JPG, GIF, MP4, WebM and MOV files are allowed.",
                     "status": False,
                 },
                 status=status.HTTP_400_BAD_REQUEST,
@@ -536,11 +539,14 @@ class ProjectAssetEndpoint(BaseAPIView):
             "image/webp",
             "image/jpg",
             "image/gif",
+            "video/mp4",
+            "video/webm",
+            "video/quicktime",
         ]
         if type not in allowed_types:
             return Response(
                 {
-                    "error": "Invalid file type. Only JPEG, PNG, WebP, JPG and GIF files are allowed.",
+                    "error": "Invalid file type. Only JPEG, PNG, WebP, JPG, GIF, MP4, WebM and MOV files are allowed.",
                     "status": False,
                 },
                 status=status.HTTP_400_BAD_REQUEST,
