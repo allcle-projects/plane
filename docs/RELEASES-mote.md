@@ -5,6 +5,18 @@ CE v1.3.1 기반 `mote` 브랜치. 이미지 태그 `mote/plane-{backend,fronten
 
 > ⚠️ 배포 시 `--env-file plane.env` 필수 — 누락하면 인터폴레이션이 DB 비밀번호를 기본값으로 떨어뜨려 컨테이너가 인증 실패한다.
 
+## v1.3.1-mote.52 (2026-08-05) — mote.50 에만 있던 미커밋 운영코드 회수
+
+mote.51 을 **깨끗한 origin/mote 에서** 빌드하면서, mote.50 이미지에만 존재하던(=git 에 없는) 코드가 운영에서 사라졌다. 그걸 정식 커밋해 되돌린다.
+
+- **어떻게 발견했나**: mote.51 회고(PLANE-80)로 만든 `diff -r` 게이트를 **첫 실행하자마자 내 배포를 잡아냈다**. mote.50 이미지 ↔ origin/mote 차이가 **420줄**이었고 상당수가 "레포에 없는 코드"였다. 게이트가 없었으면 프론트가 그 경로를 밟을 때까지 몰랐을 것이다.
+- **회수 ①**: `ProjectIssueTypeViewSet` / `ProjectIssueTypeSerializer` + 라우트 2개 (`GET|POST .../projects/<id>/issue-types/`, `DELETE .../issue-types/<pk>/`). **배포된 프론트엔드가 실제로 호출하는 경로**(mote.50 번들에 `/api/workspaces/${e}/projects/${t}/issue-types/` 존재)라 mote.51 상태에서는 404 였다. 다만 게이트웨이 로그 보존구간 내 실호출 0건이라 잠재 고장이었다.
+- **회수 ②**: 에셋 업로드 allowlist 의 `video/mp4` · `video/webm` · `video/quicktime` (v2 엔드포인트 2곳 + 에러 문구).
+- **무사한 것**: `ProjectIssueType` 모델과 마이그레이션 `0074` 는 이미 커밋돼 있었다 → **데이터 영향 없음**, 사라진 건 API 표면뿐.
+- **검증**: 라우트 등록·`reverse()` 가 원 경로와 일치, import 해소, 유닛 스위트 기준선과 동일(114 passed). mote.50 이미지에서 **원문 그대로** 회수(재구현 아님), origin/mote 대비 전 hunk 가 순수 추가(업로드 에러 문구 2줄만 교체).
+- ⚠️ **출처 불명**: 커밋된 적이 없어 작성자 기록이 없다. 의도적 미커밋이었을 가능성은 배제 못 한다.
+- 🔴 **근본 원인은 그대로**: `/srv/shared/app-src/plane` 은 **지금도 dirty**(`docs/RELEASES-mote.md` 삭제 포함). 거기서 빌드하는 한 재발한다 → PLANE-80.
+
 ## v1.3.1-mote.51 (2026-08-05) — 문서(Pages) 저장 500 + 감사로그가 웹을 끊는 문제 fix
 
 도트/쿠키 "plane 페이지가 잘 안들어가진다" 리포트에서 출발. 서버·로그인·이슈 API는 전부 정상이었고(12시간 5xx 0건, SSO 정상, 홈 API 전건 200) 실제 결함은 아래 3건.
