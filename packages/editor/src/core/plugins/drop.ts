@@ -7,7 +7,11 @@
 import type { Editor } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 // constants
-import { ACCEPTED_ATTACHMENT_MIME_TYPES, ACCEPTED_IMAGE_MIME_TYPES } from "@/constants/config";
+import {
+  ACCEPTED_ATTACHMENT_MIME_TYPES,
+  ACCEPTED_IMAGE_MIME_TYPES,
+  ACCEPTED_VIDEO_MIME_TYPES,
+} from "@/constants/config";
 // types
 import type { TEditorCommands, TExtensions } from "@/types";
 
@@ -126,7 +130,12 @@ export const insertFilesSafely = async (args: InsertFilesSafelyArgs) => {
           pos,
           event,
         });
-      } else if (fileType === "attachment") {
+      } else if (fileType === "attachment" && ACCEPTED_VIDEO_MIME_TYPES.includes(file.type) && !disabledExtensions?.includes("video")) {
+        editor.commands.insertVideoComponent({
+          file,
+          pos,
+          event,
+        });
       }
     } catch (error) {
       console.error(`Error while ${event}ing file:`, error);
