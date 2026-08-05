@@ -20,6 +20,19 @@ from plane.bgtasks.logger_task import process_logs
 
 api_logger = logging.getLogger("plane.api.request")
 
+# Upper bound on how much of a request/response body is copied into the audit
+# log. Each celery message carries the body twice (log_data + mongo_log), so an
+# uncapped body is published to RabbitMQ at ~2x its size. A single oversized
+# publish is rejected with `PRECONDITION_FAILED (406)` and takes the whole AMQP
+# channel down with it, which then surfaces as a 500 on the *next* unrelated
+# request that shares the connection (e.g. `recent_visited_task.delay()` while
+# opening a project or page). Capping here keeps one big API payload from
+# breaking web navigation for everyone.
+MAX_LOGGED_BODY_BYTES = 64 * 1024
+
+# Header whose value is the raw API token; never copy it into the audit log.
+API_KEY_HEADER = "X-Api-Key"
+
 
 class RequestLoggerMiddleware:
     def __init__(self, get_response):
@@ -106,14 +119,51 @@ class APITokenLogMiddleware:
         if content.startswith(b"\x89PNG") or content.startswith(b"\xff\xd8\xff") or content.startswith(b"%PDF"):
             return "[Binary Content]"
 
+        original_size = len(content)
+        truncated = original_size > MAX_LOGGED_BODY_BYTES
+        if truncated:
+            content = content[:MAX_LOGGED_BODY_BYTES]
+
         try:
-            return content.decode("utf-8")
+            decoded = content.decode("utf-8")
         except UnicodeDecodeError:
-            return "[Could not decode content]"
+            if not truncated:
+                return "[Could not decode content]"
+            # The cut may have landed mid-character; that alone shouldn't turn a
+            # useful truncated body into "[Could not decode content]".
+            decoded = content.decode("utf-8", errors="replace")
+
+        if truncated:
+            decoded += f"... [truncated: {original_size} bytes total, logged first {MAX_LOGGED_BODY_BYTES}]"
+        return decoded
+
+    def _response_body(self, response):
+        """
+        Returns the response body for logging, or a marker for responses whose
+        body cannot be read without consuming it.
+        """
+        # StreamingHttpResponse (e.g. page description binary downloads) has no
+        # `.content`; touching it raises AttributeError.
+        if getattr(response, "streaming", False):
+            return "[Streaming Content]"
+
+        content = getattr(response, "content", None)
+        return self._safe_decode_body(content) if content else None
+
+    def _safe_headers(self, request):
+        """
+        Stringified request headers with the API token redacted.
+        """
+        headers = {}
+        for key, value in request.headers.items():
+            if key.lower() == API_KEY_HEADER.lower():
+                headers[key] = "[REDACTED]"
+            else:
+                headers[key] = value
+        return str(headers)
 
     def process_request(self, request, response, request_body):
-        api_key_header = "X-Api-Key"
-        api_key = request.headers.get(api_key_header)
+        api_key = request.headers.get(API_KEY_HEADER)
 
         # If the API key is not present, return
         if not api_key:
@@ -125,9 +175,9 @@ class APITokenLogMiddleware:
                 "path": request.path,
                 "method": request.method,
                 "query_params": request.META.get("QUERY_STRING", ""),
-                "headers": str(request.headers),
+                "headers": self._safe_headers(request),
                 "body": self._safe_decode_body(request_body) if request_body else None,
-                "response_body": self._safe_decode_body(response.content) if response.content else None,
+                "response_body": self._response_body(response),
                 "response_code": response.status_code,
                 "ip_address": get_client_ip(request=request),
                 "user_agent": request.META.get("HTTP_USER_AGENT", None),
