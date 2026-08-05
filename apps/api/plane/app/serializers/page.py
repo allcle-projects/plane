@@ -191,6 +191,53 @@ class PageBinaryUpdateSerializer(serializers.Serializer):
     description_html = serializers.CharField(required=False, allow_blank=True)
     description_json = serializers.JSONField(required=False, allow_null=True)
 
+    def validate_description_binary(self, value):
+        """Validate the base64-encoded binary data"""
+        if not value:
+            return value
+
+        try:
+            # Decode the base64 data
+            binary_data = base64.b64decode(value)
+
+            # Validate the binary data
+            is_valid, error_message = validate_binary_data(binary_data)
+            if not is_valid:
+                raise serializers.ValidationError(f"Invalid binary data: {error_message}")
+
+            return binary_data
+        except Exception as e:
+            if isinstance(e, serializers.ValidationError):
+                raise
+            raise serializers.ValidationError("Failed to decode base64 data")
+
+    def validate_description_html(self, value):
+        """Validate the HTML content"""
+        if not value:
+            return value
+
+        # Use the validation function from utils
+        is_valid, error_message, sanitized_html = validate_html_content(value)
+        if not is_valid:
+            raise serializers.ValidationError(error_message)
+
+        # Return sanitized HTML if available, otherwise return original
+        return sanitized_html if sanitized_html is not None else value
+
+    def update(self, instance, validated_data):
+        """Update the page instance with validated data"""
+        if "description_binary" in validated_data:
+            instance.description_binary = validated_data.get("description_binary")
+
+        if "description_html" in validated_data:
+            instance.description_html = validated_data.get("description_html")
+
+        if "description_json" in validated_data:
+            instance.description_json = validated_data.get("description_json")
+
+        instance.save()
+        return instance
+
 
 class PageCollectionSerializer(BaseSerializer):
     page_ids = serializers.SerializerMethodField()
@@ -293,50 +340,3 @@ class PageCommentSerializer(BaseSerializer):
             "created_at",
             "updated_at",
         ]
-
-    def validate_description_binary(self, value):
-        """Validate the base64-encoded binary data"""
-        if not value:
-            return value
-
-        try:
-            # Decode the base64 data
-            binary_data = base64.b64decode(value)
-
-            # Validate the binary data
-            is_valid, error_message = validate_binary_data(binary_data)
-            if not is_valid:
-                raise serializers.ValidationError(f"Invalid binary data: {error_message}")
-
-            return binary_data
-        except Exception as e:
-            if isinstance(e, serializers.ValidationError):
-                raise
-            raise serializers.ValidationError("Failed to decode base64 data")
-
-    def validate_description_html(self, value):
-        """Validate the HTML content"""
-        if not value:
-            return value
-
-        # Use the validation function from utils
-        is_valid, error_message, sanitized_html = validate_html_content(value)
-        if not is_valid:
-            raise serializers.ValidationError(error_message)
-
-        # Return sanitized HTML if available, otherwise return original
-        return sanitized_html if sanitized_html is not None else value
-
-    def update(self, instance, validated_data):
-        """Update the page instance with validated data"""
-        if "description_binary" in validated_data:
-            instance.description_binary = validated_data.get("description_binary")
-
-        if "description_html" in validated_data:
-            instance.description_html = validated_data.get("description_html")
-
-        if "description_json" in validated_data:
-            instance.description_json = validated_data.get("description_json")
-
-        instance.save()
-        return instance
