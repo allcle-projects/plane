@@ -5,6 +5,18 @@ CE v1.3.1 기반 `mote` 브랜치. 이미지 태그 `mote/plane-{backend,fronten
 
 > ⚠️ 배포 시 `--env-file plane.env` 필수 — 누락하면 인터폴레이션이 DB 비밀번호를 기본값으로 떨어뜨려 컨테이너가 인증 실패한다.
 
+## v1.3.1-mote.51 (2026-08-05) — 문서(Pages) 저장 500 + 감사로그가 웹을 끊는 문제 fix
+
+도트/쿠키 "plane 페이지가 잘 안들어가진다" 리포트에서 출발. 서버·로그인·이슈 API는 전부 정상이었고(12시간 5xx 0건, SSO 정상, 홈 API 전건 200) 실제 결함은 아래 3건.
+
+- **문서 본문 저장이 100% 500** — `PageBinaryUpdateSerializer`의 `validate_description_binary` / `validate_description_html` / `update` 세 메서드가 병합 사고로 **`PageCommentSerializer` 안에 들어가 있었다**(331줄 docstring이 "Update the *page* instance"라고 말하는 게 증거). `PageBinaryUpdateSerializer`는 `serializers.Serializer`라 `update()`가 없으면 DRF가 `NotImplementedError`를 던진다 → 저장 시도 전건 500. 세 메서드를 원래 클래스로 되돌렸다.
+  - 부수 피해 2건도 같이 해소: ① 페이지 저장 시 **HTML 살균(`validate_html_content`)이 아예 실행되지 않고 있었다**(#7507의 목적이 무력화), ② 잘못 붙은 `update()`가 `ModelSerializer.update()`를 가려서 **페이지 댓글 수정이 조용히 아무것도 저장하지 않았다**(`PageComment`에는 `description_*` 필드가 없다).
+- **감사로그가 AMQP 채널을 죽여 웹 화면 진입이 500** — `APITokenLogMiddleware`가 요청/응답 본문을 **무제한** 복사하고 `mongo_log`가 그걸 한 번 더 복제 → 실측 **354,911,882바이트** 메시지가 RabbitMQ 한도(128MB)를 넘겨 `PRECONDITION_FAILED (406)`으로 채널이 통째로 죽었다. 그러면 같은 커넥션을 쓰는 **다음 요청**이 터진다 — Plane은 프로젝트·문서를 열 때마다 `recent_visited_task.delay()`를 부르므로 실제 증상은 `GET /api/workspaces/{slug}/projects/{id}/ → 500` + `/pages/` 499(사용자가 기다리다 포기)로 나타났다. 본문을 64KB로 캡했다(메시지 최대 ~128KB).
+  - 같이 처리: `X-Api-Key`를 `headers` 블롭에서 **마스킹**(PLANE-75 일부), `StreamingHttpResponse`(문서 바이너리 다운로드)에서 `.content` 접근이 매번 AttributeError를 내던 것 차단.
+- **`logger_task` 등록이 mote.50에서 유실(회귀)** — mote.49에서 넣은 `CELERY_IMPORTS`의 `"plane.bgtasks.logger_task"` 한 줄이 **배포 이미지에만 없었다**(레포에는 있음). mote.50이 stash 대피/복원을 거친 `/srv/shared/app-src/plane`에서 빌드된 결과(위 mote.50 ⚠️ 항목 참조). 코드 수정은 불필요하고 **재빌드·재배포가 곧 수정**. 재발 방지로 `CELERY_IMPORTS` 회귀 테스트를 추가했다.
+- **테스트 25건 추가** — `test_page_binary_update.py`, `test_api_token_log.py`, `test_celery_imports.py`. 기준선(origin/mote) 대비 회귀 0건(89 → 114 passed, 실패·에러 동일).
+- ⚠️ 남은 PLANE-75: `api_activity_logs.token_identifier`에 API 키 원문이 그대로 들어간다(감사 조인키라 이번엔 손대지 않음). 마스킹 여부는 otro 판단 대기.
+
 ## v1.3.1-mote.50 (2026-07-21) — .md/.mdx 첨부파일 업로드 실패 fix
 - **원인**: `.md`/`.mdx`는 매직바이트가 없는 순수 텍스트라 프론트엔드 `file-type` 시그니처 감지가 빈 문자열을 반환 → 백엔드가 `not type` 체크로 400 "Invalid file type." 거부. 인프라(MinIO/S3) 문제 아님, API 직접 호출로 재현·검증 완료(TEST-32).
 - **수정**: upstream Plane `feat/file-uploads-md-mdx-support` 커밋 2개 cherry-pick(`dac358b2aa`, `9eb1148dde`) — 확장자 기반 MIME fallback(`EXTENSION_MIME_TYPE_MAP`) 추가, `text/mdx` allowlist 등록, 이중확장자(`foo.exe.md`) 우회 차단.
