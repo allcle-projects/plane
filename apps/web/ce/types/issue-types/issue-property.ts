@@ -44,6 +44,22 @@ export type TIssueType = {
   updated_by: string | null;
 };
 
+// A link row enabling a work item type on a specific project (Phase 3).
+// Mirrors ProjectIssueTypeSerializer (fields "__all__" + issue_type_detail).
+export type TProjectIssueType = {
+  id: string;
+  workspace: string;
+  project: string;
+  issue_type: string;
+  issue_type_detail: TIssueType;
+  level: number;
+  is_default: boolean;
+  created_at: string | undefined;
+  updated_at: string | undefined;
+  created_by: string | null;
+  updated_by: string | null;
+};
+
 // An option for a SELECT / MULTI_SELECT property.
 export type TIssuePropertyOption = {
   id: string;
