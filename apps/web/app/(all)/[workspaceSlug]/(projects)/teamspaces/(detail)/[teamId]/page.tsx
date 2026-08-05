@@ -7,6 +7,8 @@
 // Teamspaces — mote.
 // See docs/mote-design/05-teamspaces-access.md, section 1.
 
+"use client";
+
 import { useParams } from "next/navigation";
 import { TeamspaceDetailRoot } from "@/plane-web/components/teamspaces";
 
