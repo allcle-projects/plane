@@ -147,6 +147,7 @@ from .issue_property import (
     IssuePropertySerializer,
     IssuePropertyReadSerializer,
     IssuePropertyOptionSerializer,
+    ProjectIssueTypeSerializer,
 )
 
 from .template import TemplateSerializer

@@ -22,6 +22,7 @@ from plane.db.models import (
     IssueType,
     IssueProperty,
     IssuePropertyOption,
+    ProjectIssueType,
     PropertyTypeEnum,
 )
 
@@ -31,6 +32,24 @@ class IssueTypeSerializer(BaseSerializer):
         model = IssueType
         fields = "__all__"
         read_only_fields = ["workspace", "created_by", "updated_by", "created_at", "updated_at"]
+
+
+class ProjectIssueTypeSerializer(BaseSerializer):
+    # Read-only embed of the linked work item type, so the project-scoped
+    # list endpoint carries the type's name/logo/flags without a second call.
+    issue_type_detail = IssueTypeSerializer(source="issue_type", read_only=True)
+
+    class Meta:
+        model = ProjectIssueType
+        fields = "__all__"
+        read_only_fields = [
+            "workspace",
+            "project",
+            "created_by",
+            "updated_by",
+            "created_at",
+            "updated_at",
+        ]
 
 
 class IssuePropertyOptionSerializer(BaseSerializer):
