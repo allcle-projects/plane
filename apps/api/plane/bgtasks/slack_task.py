@@ -68,10 +68,18 @@ def _plain(html):
 # `description` -> description_html; both are parsed with the same mention parser
 # the in-app notification pipeline uses.
 #
-# ⚠️ Known gap: mentions written in the body **while creating an issue** never reach
-# Slack. `create_issue_activity` does not call `track_description`, so no
-# `field="description"` activity exists in that batch — the in-app path still
-# notifies because it parses `requested_data` directly, which this task is not given.
+# ⚠️ Known gaps — both are the same shape: no activity is emitted, so there is
+# nothing for this task to read. In-app notifies in both cases because it parses
+# `requested_data` directly, which this task is not given. Under-delivery, not over.
+#
+#  1. Mentions written in the body **while creating an issue**.
+#     `create_issue_activity` does not call `track_description`, so the batch has no
+#     `field="description"` activity at all.
+#  2. Mentions added by a **consecutive body edit from the same author**.
+#     `track_description` merges into the previous activity (`created_at` bump only)
+#     when the issue's last activity is a description activity by the same actor —
+#     that edit's new_value is never recorded. The mention is then present in every
+#     later `old_value`, so the diff below can never recover it either.
 _MENTION_FIELDS = ("comment", "description")
 
 # Assignment. Plane emits one activity per added/removed assignee; a removal leaves
