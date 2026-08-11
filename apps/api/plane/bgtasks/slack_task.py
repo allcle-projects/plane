@@ -5,11 +5,19 @@
 # Slack delivery (mote). See docs/mote-design/06-integrations-importers-automations.md.
 #
 # When a project has a SlackProjectSync with an incoming-webhook URL, push a short
-# summary of each issue activity (comment / state / priority / assignee change) to
-# the Slack channel bound to that webhook. Self-contained: no OAuth, no external
-# task-bot, no inbound receiver — just an outbound POST. A no-op when the project
-# has no webhook configured. All failures are swallowed (logged) so Slack outages
-# never affect the activity pipeline.
+# summary to the Slack channel bound to that webhook. Self-contained: no OAuth, no
+# external task-bot, no inbound receiver — just an outbound POST. A no-op when the
+# project has no webhook configured. All failures are swallowed (logged) so Slack
+# outages never affect the activity pipeline.
+#
+# Scope: **directed activity only** — a mention (comment or description) or an
+# assignment. TEAMDEV-745.
+#
+# The first cut announced every activity in _FIELD_VERB (state / priority /
+# target_date / creation). On a project as busy as team-dev that buries the channel
+# within a day, and a channel nobody reads is the same as no notification at all —
+# which is the failure this task exists to fix. In-app notifications still cover the
+# full activity set; Slack carries only what is addressed to a person.
 
 import json
 import re
@@ -36,16 +44,33 @@ def _plain(html):
     return re.sub(r"\s+", " ", text).strip()
 
 
-# Which activity fields are worth announcing, and how to phrase them.
-_FIELD_VERB = {
-    "comment": "commented on",
-    "state": "changed the state of",
-    "priority": "changed the priority of",
-    "assignees": "reassigned",
-    "assignee": "reassigned",
-    "target_date": "rescheduled",
-    None: "created",
-}
+# Activity fields that can carry a mention. `comment` -> comment_html,
+# `description` -> description_html; both are parsed with the same mention parser
+# the in-app notification pipeline uses.
+_MENTION_FIELDS = ("comment", "description")
+
+# Assignment. Plane emits one activity per added/removed assignee; a removal leaves
+# new_value empty, and "X unassigned Y" is not something anyone needs pinged for.
+_ASSIGNEE_FIELDS = ("assignees", "assignee")
+
+
+def _mentioned_names(html):
+    """Display names of users mentioned in `html`, in a stable order.
+
+    Reuses the notification pipeline's parser rather than a second regex — the
+    mention markup (`<mention-component entity_name="user_mention">`) then has a
+    single reader, so a future editor change cannot make Slack and in-app
+    notifications disagree about what counts as a mention.
+    Imported lazily: notification_task pulls in a wide slice of the model layer and
+    this task is loaded by the Celery worker at import time.
+    """
+    from plane.bgtasks.notification_task import extract_comment_mentions
+
+    user_ids = extract_comment_mentions(html or "")
+    if not user_ids:
+        return []
+    users = User.objects.filter(pk__in=user_ids).values_list("display_name", "email")
+    return sorted({(name or email) for name, email in users})
 
 
 def _issue_url(slug, project_id, issue_id):
@@ -83,24 +108,27 @@ def slack_activity_notify(project_id, actor_id, issue_id, issue_activities_creat
         identifier = f"{issue.project.identifier}-{issue.sequence_id}"
         url = _issue_url(issue.workspace.slug, str(project_id), str(issue_id))
 
-        # Build one line per meaningful activity.
+        # Build one line per *directed* activity — a mention or an assignment.
+        # Anything else is deliberately silent here (see the scope note at the top).
         lines = []
         for activity in activities:
             field = activity.get("field")
-            if field not in _FIELD_VERB:
-                continue
-            verb = _FIELD_VERB[field]
-            if field == "comment":
-                snippet = _plain(activity.get("new_value") or "")
-                # new_value carries comment_html; render it as plain text for Slack.
+            if field in _MENTION_FIELDS:
+                raw = activity.get("new_value") or ""
+                names = _mentioned_names(raw)
+                if not names:
+                    # A comment with no mention is not addressed to anyone.
+                    continue
+                who = ", ".join(names)
+                where = "a comment on" if field == "comment" else "the description of"
+                snippet = _plain(raw)
                 detail = f": {snippet[:280]}" if snippet else ""
-                lines.append(f"💬 {actor_name} {verb} *{identifier}*{detail}")
-            elif field is None:
-                lines.append(f"✨ {actor_name} {verb} *{identifier}* — {issue.name}")
-            else:
+                lines.append(f"💬 {actor_name} mentioned *{who}* in {where} *{identifier}*{detail}")
+            elif field in _ASSIGNEE_FIELDS:
                 new_value = (activity.get("new_value") or "").strip()
-                to = f" → *{new_value}*" if new_value else ""
-                lines.append(f"🔔 {actor_name} {verb} *{identifier}*{to}")
+                if not new_value:
+                    continue
+                lines.append(f"🙋 {actor_name} assigned *{identifier}* to *{new_value}*")
 
         if not lines:
             return
