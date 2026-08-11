@@ -53,7 +53,10 @@ class TestSlackActivityNotify:
 
     @pytest.fixture
     def mentioned(self, workspace):
-        return User.objects.create(email="dot@motemote.kr", display_name="dot")
+        # `username` is unique and the conftest `create_user` fixture (our actor)
+        # leaves it "", so a second user built the same way collides on
+        # users_username_key. Set it explicitly.
+        return User.objects.create(email="dot@motemote.kr", username="dot", display_name="dot")
 
     def _run(self, project, actor, issue, payload):
         with patch("plane.bgtasks.slack_task.requests.post") as post:
@@ -109,9 +112,27 @@ class TestSlackActivityNotify:
         assert "dot" in post.call_args.kwargs["json"]["text"]
 
     def test_posts_to_every_configured_channel(self, sync, project, create_user, issue, mentioned, workspace):
-        SlackProjectSync.objects.create(project=project, workspace=workspace, webhook_url=WEBHOOK + "2")
+        """Two channels for one project require distinct team_id values.
+
+        `SlackProjectSync.Meta.unique_together = ["team_id", "project"]`, and the
+        paste-a-webhook-URL flow leaves team_id "" — so **a project gets exactly one
+        channel** unless someone fills team_id in. The fan-out loop is real but only
+        reachable that way; second-channel-per-project is not a configuration the
+        admin flow can produce today.
+        """
+        SlackProjectSync.objects.create(
+            project=project, workspace=workspace, webhook_url=WEBHOOK + "2", team_id="T2"
+        )
         post = self._run(project, create_user, issue, _activity("comment", _mention(mentioned.id)))
         assert post.call_count == 2
+
+    def test_one_channel_per_project_unless_team_id_differs(self, sync, project, workspace):
+        """Guard the constraint itself — if it is ever relaxed, the note above
+        (and the admin flow's assumptions) need revisiting."""
+        from django.db.utils import IntegrityError
+
+        with pytest.raises(IntegrityError):
+            SlackProjectSync.objects.create(project=project, workspace=workspace, webhook_url=WEBHOOK + "2")
 
     # --- failures must never touch the activity pipeline --------------------
     def test_slack_outage_does_not_raise(self, sync, project, create_user, issue, mentioned):
