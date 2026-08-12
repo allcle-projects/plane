@@ -145,9 +145,32 @@ def copy_s3_objects_of_description_and_assets(entity_name, entity_identifier, pr
         external_data = sync_with_external_service(entity_name, updated_html)
 
         if external_data:
-            entity.description_json = external_data.get("description_json")
-            entity.description_binary = base64.b64decode(external_data.get("description_binary"))
-            entity.save()
+            description_json = external_data.get("description_json")
+            description_binary = external_data.get("description_binary")
+
+            # The live server's /convert-document returns both keys on 200. If it
+            # ever does not — api and live ship as separately versioned images, so
+            # a contract skew between them is possible — each assignment below
+            # fails in its own way: description_json is NOT NULL (IntegrityError),
+            # and b64decode(None) raises TypeError. The outer `except` swallows
+            # both, so from outside it looks like the copy simply worked.
+            #
+            # It did not. update_description() has already saved description_html
+            # with the *new* asset ids by this point, so writing only one of the
+            # two would leave a copy whose html and json/binary disagree — the
+            # duplicate would render the source's assets. Skip both instead, and
+            # say why.
+            if description_json is None or description_binary is None:
+                log_exception(
+                    ValueError(
+                        f"convert-document response missing description fields for "
+                        f"{entity_name} {entity_identifier}; got keys={sorted(external_data)}"
+                    )
+                )
+            else:
+                entity.description_json = description_json
+                entity.description_binary = base64.b64decode(description_binary)
+                entity.save()
 
         return
     except Exception as e:
