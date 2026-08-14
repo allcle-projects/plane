@@ -322,7 +322,13 @@ CELERY_IMPORTS = (
     "plane.bgtasks.recurring_issue_task",
     "plane.bgtasks.initiative_rollup_task",
     "plane.bgtasks.milestone_rollup_task",
+    # ⚠️ 이름이 비슷한 두 모듈이 **모두** 필요하다. 하나만 있으면 나머지 태스크가
+    #    "Received unregistered task" 로 조용히 버려진다(에러가 호출부에 안 보임).
+    #    - issue_automation_task : 스케줄 기반 이슈 자동화
+    #    - automation_task       : evaluate_automations — 이슈 활동마다 dispatch
+    #      (plane/bgtasks/issue_activities_task.py 의 evaluate_automations.delay)
     "plane.bgtasks.issue_automation_task",
+    "plane.bgtasks.automation_task",
     "plane.bgtasks.exporter_expired_task",
     "plane.bgtasks.file_asset_task",
     "plane.bgtasks.email_notification_task",
