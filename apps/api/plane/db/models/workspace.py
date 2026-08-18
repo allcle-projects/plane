@@ -401,6 +401,11 @@ class WorkspaceUserProperties(BaseModel):
     )
     filters = models.JSONField(default=get_default_filters)
     display_filters = models.JSONField(default=get_default_display_filters)
+    # mote: 워크스페이스 Views 진입 시 열릴 기본 뷰.
+    # 값은 스톡 뷰 key("all-issues"/"assigned"/"created"/"subscribed") 또는
+    # 커스텀 workspace view 의 UUID 문자열. 비어 있으면 기존 동작(all-issues).
+    # WorkspaceUserPropertiesSerializer 가 fields="__all__" 이라 별도 노출 작업이 없다.
+    default_global_view = models.CharField(max_length=255, blank=True, null=True)
     display_properties = models.JSONField(default=get_default_display_properties)
     rich_filters = models.JSONField(default=dict)
     navigation_project_limit = models.IntegerField(default=10)

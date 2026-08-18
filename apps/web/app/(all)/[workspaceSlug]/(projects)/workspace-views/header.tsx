@@ -7,7 +7,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
-import { Download } from "lucide-react";
+import { Download, Star } from "lucide-react";
 // plane imports
 import {
   EIssueFilterType,
@@ -52,7 +52,8 @@ export const GlobalIssuesHeader = observer(function GlobalIssuesHeader() {
   const {
     issuesFilter: { filters, updateFilters },
   } = useIssues(EIssuesStoreType.GLOBAL);
-  const { getViewDetailsById, currentWorkspaceViews } = useGlobalView();
+  const { getViewDetailsById, currentWorkspaceViews, defaultGlobalViewMap, setDefaultGlobalView } =
+    useGlobalView();
   const { t } = useTranslation();
 
   const issueFilters = globalViewId ? filters[globalViewId.toString()] : undefined;
@@ -148,9 +149,42 @@ export const GlobalIssuesHeader = observer(function GlobalIssuesHeader() {
     };
   });
 
-  const switcherOptions = [...defaultOptions, ...workspaceOptions].filter(
+  // mote — 기본 뷰를 목록 맨 위로. 스톡은 [스톡 4개, 커스텀…] 고정이라
+  // 내가 만든 뷰가 항상 아래에 깔려 매번 스크롤/검색해야 했다.
+  const defaultGlobalView = workspaceSlug ? (defaultGlobalViewMap[workspaceSlug.toString()] ?? null) : null;
+
+  const switcherOptions = ([...defaultOptions, ...workspaceOptions].filter(
     (option) => option !== undefined
-  ) as ICustomSearchSelectOption[];
+  ) as ICustomSearchSelectOption[]).sort((a, b) => {
+    if (!defaultGlobalView) return 0;
+    if (a.value === defaultGlobalView) return -1;
+    if (b.value === defaultGlobalView) return 1;
+    return 0;
+  });
+
+  // mote — 현재 보고 있는 뷰를 기본으로 지정/해제.
+  const isCurrentViewDefault = !!globalViewId && globalViewId === defaultGlobalView;
+  const handleToggleDefaultView = useCallback(async () => {
+    if (!workspaceSlug || !globalViewId) return;
+    try {
+      await setDefaultGlobalView(workspaceSlug.toString(), isCurrentViewDefault ? null : globalViewId);
+      setToast({
+        type: TOAST_TYPE.SUCCESS,
+        title: isCurrentViewDefault ? "기본 뷰 해제" : "기본 뷰로 지정",
+        message: isCurrentViewDefault
+          ? "이제 Views 를 열면 All work items 로 들어갑니다."
+          : "이제 Views 를 열면 이 뷰로 바로 들어갑니다.",
+      });
+    } catch {
+      // 낙관적 반영은 스토어에서 되돌린다. 여기서는 실패를 알리기만 한다 —
+      // 조용히 실패하면 "설정됐다"는 착시가 남는다.
+      setToast({
+        type: TOAST_TYPE.ERROR,
+        title: "기본 뷰 저장 실패",
+        message: "잠시 후 다시 시도해 주세요.",
+      });
+    }
+  }, [workspaceSlug, globalViewId, isCurrentViewDefault, setDefaultGlobalView]);
   const currentLayoutFilters = useMemo(() => {
     const layout = activeLayout ?? EIssueLayoutTypes.SPREADSHEET;
     return ISSUE_DISPLAY_FILTERS_BY_PAGE.my_issues.layoutOptions[layout];
@@ -188,6 +222,34 @@ export const GlobalIssuesHeader = observer(function GlobalIssuesHeader() {
         </Header.LeftItem>
 
         <Header.RightItem className="items-center">
+          {/* mote — 이 뷰를 기본으로 지정/해제. Views 진입 시 열릴 뷰를 정한다.
+              사용자 x 워크스페이스로 서버(WorkspaceUserProperties)에 저장되므로
+              브라우저/기기를 바꿔도 유지된다. */}
+          {globalViewId && (
+            <Tooltip
+              tooltipContent={
+                isCurrentViewDefault
+                  ? "기본 뷰 해제 — Views 를 열면 All work items 로 들어갑니다"
+                  : "기본 뷰로 지정 — Views 를 열면 이 뷰로 바로 들어갑니다"
+              }
+            >
+              <button
+                type="button"
+                onClick={handleToggleDefaultView}
+                aria-pressed={isCurrentViewDefault}
+                aria-label={isCurrentViewDefault ? "기본 뷰 해제" : "기본 뷰로 지정"}
+                className="grid h-7 w-7 place-items-center rounded outline-none hover:bg-custom-background-80"
+              >
+                <Star
+                  className={
+                    isCurrentViewDefault
+                      ? "h-3.5 w-3.5 fill-amber-500 text-amber-500"
+                      : "h-3.5 w-3.5 text-custom-text-300"
+                  }
+                />
+              </button>
+            </Tooltip>
+          )}
           {!isLocked && (
             <GlobalViewLayoutSelection
               onChange={handleLayoutChange}
