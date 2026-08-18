@@ -10,12 +10,7 @@ import { TiptapTransformer } from "@hocuspocus/transformer";
 import type { AnyExtension, JSONContent } from "@tiptap/core";
 import type * as Y from "yjs";
 // editor extensions
-import {
-  TITLE_EDITOR_EXTENSIONS,
-  createRealtimeEvent,
-  extractTextFromHTML,
-  generateTitleProsemirrorJson,
-} from "@plane/editor";
+import { TITLE_EDITOR_EXTENSIONS, createRealtimeEvent, generateTitleProsemirrorJson } from "@plane/editor";
 import { logger } from "@plane/logger";
 import { AppError } from "@/lib/errors";
 // helpers
@@ -23,6 +18,7 @@ import { getPageService } from "@/services/page/handler";
 import type { HocusPocusServerContext, OnLoadDocumentPayloadWithContext } from "@/types";
 import { broadcastMessageToPage } from "@/utils/broadcast-message";
 import { TitleUpdateManager } from "./title-update/title-update-manager";
+import { extractTitleFromFragmentHTML } from "./title-update/title-utils";
 
 /**
  * Hocuspocus extension for synchronizing document titles
@@ -49,7 +45,12 @@ export class TitleSyncExtension implements Extension {
     try {
       // initially for on demand migration of old titles to a new title field
       // in the yjs binary
-      if (document.isEmpty("title")) {
+      //
+      // `document.merge` is additive (Y.applyUpdate), so this must only ever run
+      // against a genuinely empty title fragment. `isEmpty` alone is not enough:
+      // a document regenerated from HTML already carries a title heading, and
+      // merging a second one makes the flattened title double on every load.
+      if (document.isEmpty("title") && document.getXmlFragment("title").length === 0) {
         const service = getPageService(context.documentType, context);
         const pageDetails = await service.fetchDetails(documentName);
         const title = pageDetails.name;
@@ -107,7 +108,10 @@ export class TitleSyncExtension implements Extension {
   private handleTitleChange(documentName: string, events: Y.YEvent<any>[]) {
     let title = "";
     events.forEach((event) => {
-      title = extractTextFromHTML(event.currentTarget.toJSON() as string);
+      // Read only the first heading of the fragment. The fragment can hold more
+      // than one after an additive merge, and flattening all of them would
+      // persist `title + title` — see extractTitleFromFragmentHTML.
+      title = extractTitleFromFragmentHTML(event.currentTarget.toJSON() as string);
     });
 
     // Get the manager for this document

@@ -9,6 +9,7 @@ import { AppError } from "@/lib/errors";
 import { getPageService } from "@/services/page/handler";
 import type { HocusPocusServerContext } from "@/types";
 import { DebounceManager } from "./debounce";
+import { MAX_PAGE_TITLE_LENGTH } from "./title-utils";
 
 /**
  * Manages title update operations for a single document
@@ -38,11 +39,22 @@ export class TitleUpdateManager {
    * Schedule a debounced title update
    */
   scheduleUpdate(title: string): void {
+    // Last line of defense before the title reaches `pages.name`, which is an
+    // unbounded TextField. Any future path that produces a runaway title is
+    // capped here rather than persisted.
+    const boundedTitle = title.length > MAX_PAGE_TITLE_LENGTH ? title.slice(0, MAX_PAGE_TITLE_LENGTH) : title;
+
+    if (boundedTitle !== title) {
+      logger.warn(
+        `Title for document ${this.documentName} exceeded ${MAX_PAGE_TITLE_LENGTH} characters (${title.length}) and was truncated`
+      );
+    }
+
     // Store the latest title
-    this.lastTitle = title;
+    this.lastTitle = boundedTitle;
 
     // Schedule the update with the debounce manager
-    this.debounceManager.schedule(this.updateTitle.bind(this), title);
+    this.debounceManager.schedule(this.updateTitle.bind(this), boundedTitle);
   }
 
   /**
