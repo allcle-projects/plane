@@ -79,8 +79,6 @@ export class GlobalViewStore implements IGlobalViewStore {
 
     this.createGlobalView = this.createGlobalView.bind(this);
     this.updateGlobalView = this.updateGlobalView.bind(this);
-    this.fetchDefaultGlobalView = this.fetchDefaultGlobalView.bind(this);
-    this.setDefaultGlobalView = this.setDefaultGlobalView.bind(this);
   }
 
   /**
