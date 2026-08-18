@@ -125,6 +125,32 @@ export class WorkspaceService extends APIService {
       });
   }
 
+  /**
+   * mote — 워크스페이스 Views 의 "기본 뷰" 읽기/쓰기.
+   *
+   * 저장 위치는 `WorkspaceUserProperties.default_global_view` (사용자 x 워크스페이스).
+   * 시리얼라이저가 `fields = "__all__"` 이라 서버는 필드 추가만으로 이 키를 받는다 —
+   * 엔드포인트/시리얼라이저 변경이 없다(얕은 포크 방침).
+   */
+  async fetchWorkspaceUserProperties(workspaceSlug: string): Promise<{ default_global_view?: string | null }> {
+    return this.get(`/api/workspaces/${workspaceSlug}/user-properties/`)
+      .then((response) => response?.data)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
+  async updateWorkspaceUserProperties(
+    workspaceSlug: string,
+    data: { default_global_view?: string | null }
+  ): Promise<{ default_global_view?: string | null }> {
+    return this.patch(`/api/workspaces/${workspaceSlug}/user-properties/`, data)
+      .then((response) => response?.data)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
   async updateWorkspaceView(workspaceSlug: string, data: { view_props: IWorkspaceViewProps }): Promise<any> {
     return this.post(`/api/workspaces/${workspaceSlug}/workspace-views/`, data)
       .then((response) => response?.data)

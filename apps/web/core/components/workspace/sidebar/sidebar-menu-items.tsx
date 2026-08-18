@@ -4,7 +4,7 @@
  * See the LICENSE file for details.
  */
 
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { observer } from "mobx-react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
@@ -24,6 +24,7 @@ import { cn } from "@plane/utils";
 import { SidebarNavItem } from "@/components/sidebar/sidebar-navigation";
 // store hooks
 import { useAppTheme } from "@/hooks/store/use-app-theme";
+import { useGlobalView } from "@/hooks/store/use-global-view";
 import useLocalStorage from "@/hooks/use-local-storage";
 import {
   usePersonalNavigationPreferences,
@@ -51,8 +52,15 @@ export const SidebarMenuItems = observer(function SidebarMenuItems() {
   // hooks
   const { preferences: personalPreferences } = usePersonalNavigationPreferences();
   const { preferences: workspacePreferences } = useWorkspaceNavigationPreferences();
+  // mote — 기본 뷰 (서버 저장, 사용자 x 워크스페이스). 없으면 스톡 동작.
+  const { defaultGlobalViewMap, fetchDefaultGlobalView } = useGlobalView();
   // translation
   const { t } = useTranslation();
+
+  // 워크스페이스가 정해지면 기본 뷰를 한 번 읽는다. 실패해도 조용히 스톡 동작으로 남는다.
+  useEffect(() => {
+    if (slug) void fetchDefaultGlobalView(slug);
+  }, [slug, fetchDefaultGlobalView]);
 
   const toggleListDisclosure = (isOpen: boolean) => {
     toggleWorkspaceMenu(isOpen);
@@ -91,16 +99,23 @@ export const SidebarMenuItems = observer(function SidebarMenuItems() {
     return [...items, ...personalItems];
   }, [personalPreferences]);
 
+  // mote — 사이드바 Views 링크를 사용자가 지정한 기본 뷰로 보낸다.
+  // 스톡 href 가 `/workspace-views/all-issues/` 하드코딩이라, 필터/디스플레이를
+  // 잡아둔 커스텀 뷰가 있어도 진입할 때마다 다시 골라야 했다.
+  // 미설정(null)이면 스톡 href 를 그대로 둔다 = 기존 동작 무변경.
+  const defaultGlobalView = defaultGlobalViewMap[slug] ?? null;
+
   const sortedNavigationItems = useMemo(
     () =>
       WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS.map((item) => {
         const preference = workspacePreferences.items[item.key];
         return {
           ...item,
+          href: item.key === "views" && defaultGlobalView ? `/workspace-views/${defaultGlobalView}/` : item.href,
           sort_order: preference ? preference.sort_order : 0,
         };
       }).sort((a, b) => a.sort_order - b.sort_order),
-    [workspacePreferences]
+    [workspacePreferences, defaultGlobalView]
   );
 
   return (
