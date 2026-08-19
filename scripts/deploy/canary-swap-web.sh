@@ -11,7 +11,9 @@ INTERNAL_PORT=3000
 HEALTH_CMD="curl -fsS http://127.0.0.1:${INTERNAL_PORT}/ >/dev/null || exit 1"
 
 mapfile -t REPLICAS < <(docker ps \
-  --format "{{.Names}}" | grep -E "^plane-${SERVICE}-[0-9]+$" | sort)
+  --filter "label=com.docker.compose.service=${SERVICE}" \
+  --filter "label=com.docker.compose.project=plane" \
+  --format "{{.Names}}" | sort)
 
 if [ "${#REPLICAS[@]}" -eq 0 ]; then
   echo "no running ${SERVICE} replicas found"; exit 1
