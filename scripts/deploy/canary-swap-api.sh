@@ -14,7 +14,9 @@ VOLUME="plane_logs_api"
 VOLUME_DST="/code/plane/logs"
 
 mapfile -t REPLICAS < <(docker ps \
-  --format "{{.Names}}" | grep -E "^plane-${SERVICE}-[0-9]+$" | sort)
+  --filter "label=com.docker.compose.service=${SERVICE}" \
+  --filter "label=com.docker.compose.project=plane" \
+  --format "{{.Names}}" | sort)
 
 if [ "${#REPLICAS[@]}" -eq 0 ]; then
   echo "no running ${SERVICE} replicas found"; exit 1
@@ -22,12 +24,6 @@ fi
 echo "replicas to swap: ${REPLICAS[*]}"
 
 for OLD_NAME in "${REPLICAS[@]}"; do
-  CURRENT_IMAGE="$(docker inspect "$OLD_NAME" -f '{{.Config.Image}}' 2>/dev/null || true)"
-  if [ "$CURRENT_IMAGE" = "$NEW_IMAGE" ]; then
-    echo "=== $OLD_NAME already on ${NEW_IMAGE} - skipping ==="
-    continue
-  fi
-
   CANARY_NAME="${OLD_NAME}-canary"
   echo "=== $OLD_NAME -> canary on ${NEW_IMAGE} ==="
 
@@ -53,7 +49,7 @@ for OLD_NAME in "${REPLICAS[@]}"; do
   for _ in $(seq 1 60); do
     CANARY_IP="$(docker inspect "$CANARY_NAME" -f "{{.NetworkSettings.Networks.${NETWORK}.IPAddress}}" 2>/dev/null || true)"
     if [ -n "$CANARY_IP" ]; then
-      code="$(curl -sS -o /dev/null -w '%{http_code}' -m 3 "http://${CANARY_IP}:${INTERNAL_PORT}${PROBE_PATH}" 2>/dev/null)" || code="000"
+      code="$(curl -sS -o /dev/null -w '%{http_code}' -m 3 "http://${CANARY_IP}:${INTERNAL_PORT}${PROBE_PATH}" 2>/dev/null)"
       [ -z "$code" ] && code="000"
       if [ "$code" != "000" ]; then
         ready="yes"
