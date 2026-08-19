@@ -14,7 +14,9 @@ VOLUME_DST="/code/plane/logs"
 CMD="./bin/docker-entrypoint-beat.sh"
 
 mapfile -t REPLICAS < <(docker ps \
-  --format "{{.Names}}" | grep -E "^plane-${SERVICE}-[0-9]+$" | sort)
+  --filter "label=com.docker.compose.service=${SERVICE}" \
+  --filter "label=com.docker.compose.project=plane" \
+  --format "{{.Names}}" | sort)
 
 if [ "${#REPLICAS[@]}" -eq 0 ]; then
   echo "no running ${SERVICE} replicas found"; exit 1
