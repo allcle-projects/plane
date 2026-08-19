@@ -14,9 +14,7 @@ VOLUME_DST="/code/plane/logs"
 CMD="./bin/docker-entrypoint-beat.sh"
 
 mapfile -t REPLICAS < <(docker ps \
-  --filter "label=com.docker.compose.service=${SERVICE}" \
-  --filter "label=com.docker.compose.project=plane" \
-  --format "{{.Names}}" | sort)
+  --format "{{.Names}}" | grep -E "^plane-${SERVICE}-[0-9]+$" | sort)
 
 if [ "${#REPLICAS[@]}" -eq 0 ]; then
   echo "no running ${SERVICE} replicas found"; exit 1
@@ -28,6 +26,11 @@ if [ "${#REPLICAS[@]}" -gt 1 ]; then
 fi
 
 OLD_NAME="${REPLICAS[0]}"
+CURRENT_IMAGE="$(docker inspect "$OLD_NAME" -f '{{.Config.Image}}' 2>/dev/null || true)"
+if [ "$CURRENT_IMAGE" = "$NEW_IMAGE" ]; then
+  echo "=== $OLD_NAME already on ${NEW_IMAGE} - nothing to do ==="
+  exit 0
+fi
 echo "=== sequential restart: $OLD_NAME -> ${NEW_IMAGE} (no overlap) ==="
 
 ENV_FILE="$(mktemp)"
