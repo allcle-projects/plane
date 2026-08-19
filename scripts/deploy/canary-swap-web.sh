@@ -11,7 +11,9 @@ INTERNAL_PORT=3000
 HEALTH_CMD="curl -fsS http://127.0.0.1:${INTERNAL_PORT}/ >/dev/null || exit 1"
 
 mapfile -t REPLICAS < <(docker ps \
-  --format "{{.Names}}" | grep -E "^plane-${SERVICE}-[0-9]+$" | sort)
+  --filter "label=com.docker.compose.service=${SERVICE}" \
+  --filter "label=com.docker.compose.project=plane" \
+  --format "{{.Names}}" | sort)
 
 if [ "${#REPLICAS[@]}" -eq 0 ]; then
   echo "no running ${SERVICE} replicas found"; exit 1
@@ -19,12 +21,6 @@ fi
 echo "replicas to swap: ${REPLICAS[*]}"
 
 for OLD_NAME in "${REPLICAS[@]}"; do
-  CURRENT_IMAGE="$(docker inspect "$OLD_NAME" -f '{{.Config.Image}}' 2>/dev/null || true)"
-  if [ "$CURRENT_IMAGE" = "$NEW_IMAGE" ]; then
-    echo "=== $OLD_NAME already on ${NEW_IMAGE} - skipping ==="
-    continue
-  fi
-
   CANARY_NAME="${OLD_NAME}-canary"
   echo "=== $OLD_NAME -> canary on ${NEW_IMAGE} ==="
 
